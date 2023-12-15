@@ -98,9 +98,15 @@ The source code for **fdtmle** package is available on GitHub at [fdtmle](https:
 
 For a detailed discussion of the estimators, we refer readers to [Guo et al. 2023].For the ease of derivation, we set the average causal outcome under treatment level $A=a_0$, denoted by $E(Y^{a_0})$, as our target parameter of interest. ACE can be easily constructed as $E(Y^1)-E(Y^0)$. Under front-door model, the target parameter of interest can be identified via the following identification (ID) functional, where $P$ denotes the true observed data distribution:
 
+
+
 $$\begin{align*} \psi(P) \! = \!\! \iint \! \sum_{a=0}^1 y \ p(y \mid m, a, x) \ \! p(a \mid x) \ \! p(m \mid A=a_0, x) \ \! p(x) \ \! dy \ \! dm\ \! dx \ .        \quad \text{(target parameter)}      \end{align*}$$
 
+
+
 The above ID functional encompasses four nuisance functionals: **the outcome regression** $E(Y\mid M,A,X)$, the **propensity score** $p(A\mid X)$, the **mediator density** $p(M\mid A,X)$, and the marginal distribution of measured confounder(s) $p(X)$. Let $Q$ denotes the collection of the four nuisance functionals: $Q=\left[E(Y\mid M,A,X),p(A\mid X),p(M\mid A,X),p(X)\right]$.The nonparametric **Efficient Influence Function (EIF)** for $\psi$ was provided in [Fulcher et al. 2019] and can be written as a sum of four different components:
+
+
 $$
 \begin{aligned}
 \Phi(Q)(O_i) 
@@ -120,11 +126,14 @@ $$
 $$
 
 
+
 Those four components corresponding to the projection of the EIF into the tangent space corresponding to $Y\mid M,A,X$, $M|A,X$, $A|X$, and $X$. 
 
 ### One-step Estimator
 
 For a dataset with sample size $n$. A doubly robust **One-step Estimator** is suggested by the above EIF as
+
+
 $$
 \begin{aligned} 
 \psi(\widehat{Q}) 
@@ -135,8 +144,9 @@ $$
    &\text{where } \widehat{\cdot} \text{ denotes nuisance estimate}\ , \\
    &\widehat{Q}=\left[\widehat{E}(Y\mid M,A,X),\ \widehat{p}(A\mid X),\ \widehat{p}(M\mid A,X),\ \widehat{p}(X)\right]\ , \\
    &\widehat{p}(X) \text{ is the empirically estimated distribution of $X$, i.e. each value of $x$ observed in the data is assigned probability $p(X=x)=1/n$, otherwise $p(X=x)=0$}.
-\end{aligned} 
+\end{aligned}
 $$
+
 
 
 ### Targeted Minimum Loss based Estimator (TMLE)
@@ -144,12 +154,17 @@ $$
 For a dataset with sample size $n$. A **Targeted Minimum Loss based Estimator (TMLE)** can be constructed by updating the nuisance estimate $\widehat{f}_M,\,\widehat{\mu},\widehat{\pi}$ in $\widehat{Q}$. The TMLE-based nuisance estimate is denoted using $\widehat{\cdot}^\star$ as $\widehat{Q}^\star=\left[\widehat{E}^\star(Y\mid M,A,X),\ \widehat{\pi}^\star(A\mid X),\ \widehat{f}_M^\star(M\mid A,X),\ \widehat{p}(X)\right]$. The TMLE is then constructed based on the updated nuisance functionals as
 
 
+
 $$
 \begin{align*}
 \psi(\widehat{Q}^\star) = \!\! \iint \! \sum_{a=0}^1 \widehat{\mu}^\star(y\mid m,a,x) \ \! \widehat{\pi}^\star(a \mid x) \ \! \widehat{f}_M^\star(m \mid A=a_0, x) \ \! \widehat{p}(x) \ \! dm\ \! dx \ .    
 \end{align*}
 $$
+
+
 The detailed TMLE procedure for updating the nuisance functionals varies according to different variable types and can involve iterative updates among nuisances. As an illustration, we show how to update the outcome regression under continuous outcome $Y$. For a detailed discussion of TMLE, we refer readers to [Van der Laan et al. 2011]. For a specific discussion of TMLE algorithm for front-door model, refer to [Guo et al. 2023].The initial outcome regression estimate $\widehat{\mu}$ is updated by finding a combination of submodel and loss function as follows:
+
+
 $$
 \begin{aligned}
 \widehat{\mu}(\varepsilon_Y)(M, A, X) &= \widehat{\mu}(M, A, X) + \varepsilon_Y \ , \ \varepsilon_Y \in \mathbb{R},
@@ -157,6 +172,8 @@ $$
 L_Y\left(\widetilde{\mu};\widehat{f}_M^\star \right)(O) &= \frac{\widehat{f}_M^\star(M \mid a_0, X)}{\widehat{f}_M^\star(M \mid A, X)} \{ Y - \widetilde{\mu}(M, A, X) \}^2 \ .
 \end{aligned}
 $$
+
+
 Put $\widehat{\mu}(\varepsilon_Y)(M, A, X)$ in the place of $\widetilde{\mu}$ in the loss function, and find $\varepsilon_Y^\star$, which minimizes the loss function $L_Y\left(\widehat{\mu}(\varepsilon_Y);\widehat{f}_M^\star \right)$. $\widehat{\mu}$ is then updated as $$\widehat{\mu}^\star=\widehat{\mu}+\varepsilon_Y^\star$$
 
 
