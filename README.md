@@ -111,8 +111,8 @@ $$
 \begin{align*}
 \Phi(Q)(O_i) 
     &= \ \frac{f_M(M_i \mid a_0, X_i)}{f_M(M_i \mid A_i, X_i)} \{ Y_i - \mu(M_i, A_i, X_i) \}
-    \ + \ \frac{\mathbb{I}(A_i = a_0)}{\pi(a_0 \mid X_i)} \left\{\xi(M_i,X_i) - \theta(X_i) \right\}  \\ 
-    &\hspace{0.5cm} + \{\eta(1, X_i) - \eta(0, X_i)\} \left\{A_i - \pi(1 \mid X_i) \right\}
+    \ + \ \frac{\mathbb{I}(A_i = a_0)}{\pi(a_0 \mid X_i)} \{\xi(M_i,X_i) - \theta(X_i) \}  \\ 
+    &\hspace{0.5cm} + \{\eta(1, X_i) - \eta(0, X_i)\} \{A_i - \pi(1 \mid X_i) \}
    \ + \ \theta(X_i) - \psi(Q) \ . \\
    &\text{where} \\
    &f_M(M\mid A,X)=p(M\mid A,X)\ , \\
