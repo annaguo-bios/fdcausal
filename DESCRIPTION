@@ -1,0 +1,20 @@
+Package: fdtmle
+Type: Package
+Title: Targeted Minimum Loss Based Estimation for Frontdoor Model
+Version: 0.1.0
+Date: 2023-10-24
+Author: Anna Guo, David Benkeser, Razieh Nabi
+Maintainer: Anna Guo <guo.anna617@gmail.com>
+Description: Targeted Minimum Loss Based Estimation for Frontdoor Model, supporting binary treatment, univariate outcome, and all types of mediators.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.2.3
+Imports: SuperLearner (>= 2.0-28), np (>=
+        0.60-17), densratio (>= 0.2.1), dplyr (>= 1.0.10), stats (>= 4.2.1), MASS (>= 7.3-60), mvtnorm (>= 1.1-3)
+Depends: R (>= 4.1.0)
+NeedsCompilation: yes
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
