@@ -100,7 +100,7 @@ For a detailed discussion of the estimators, we refer readers to [Guo et al. 202
 
 
 
-$$\begin{align*} \psi(P) \! = \!\! \iint \! \sum_{a=0}^1 y \ p(y \mid m, a, x) \ \! p(a \mid x) \ \! p(m \mid A=a_0, x) \ \! p(x) \ \! dy \ \! dm\ \! dx \ .        \quad \text{(target parameter)}      \end{align*}$$
+$$\begin{align*} \psi(P)  = \iint \! \sum_{a=0}^1 y \ p(y \mid m, a, x) \ \! p(a \mid x) \  p(m \mid A=a_0, x) \  p(x) \  dy \  dm\  dx \ .        \quad \text{(target parameter)}      \end{align*}$$
 
 
 
@@ -108,7 +108,7 @@ The above ID functional encompasses four nuisance functionals: **the outcome reg
 
 
 $$
-\begin{aligned}
+\begin{align*}
 \Phi(Q)(O_i) 
     &= \ \frac{f_M(M_i \mid a_0, X_i)}{f_M(M_i \mid A_i, X_i)} \{ Y_i - \mu(M_i, A_i, X_i) \}
     \ + \ \frac{\mathbb{I}(A_i = a_0)}{\pi(a_0 \mid X_i)} \left\{\xi(M_i,X_i) - \theta(X_i) \right\}  \\ 
@@ -122,7 +122,7 @@ $$
    &\eta(A,X)=\int E(Y\mid M=m,A,X)\ p(m\mid a_0,X)\ dm \ , \\
    &\theta(X)=\sum_{a=0}^{1}\eta(a,X) \ p(a\mid X)\ = \int \xi(M=m,X)\ p(m\mid a_0,X) \ dm\ ,\\
    &\psi(P)\text{: the true value of the target parameter of interest.}
-\end{aligned}
+\end{align*}
 $$
 
 
