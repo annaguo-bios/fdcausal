@@ -137,12 +137,12 @@ For a dataset with sample size $n$. A doubly robust **One-step Estimator** is su
 $$
 \begin{aligned} 
 \psi(\widehat{Q}) 
-    &= \ \sum_{i=1}^{n}\bigg[\frac{\widehat{f}_M(M_i \mid a_0, X_i)}{\widehat{f}_M(M_i \mid A_i, X_i)} \left\{ Y_i - \widehat{\mu}(M_i, A_i, X_i) \right\}
-    \ + \ \frac{\mathbb{I}(A_i = a_0)}{\widehat{\pi}(a_0 \mid X_i)} \left\{\widehat{\xi}(M_i,X_i) - \widehat{\theta}(X_i) \right\}  \\ 
-    &\hspace{0.5cm} + \left\{\widehat{\eta}(1, X_i) - \widehat{\eta}(0, X_i)\right\} \left\{A_i - \widehat{\pi}(1 \mid X_i) \right\}  
+    &= \ \sum_{i=1}^{n}\bigg[\frac{\widehat{f}_M(M_i \mid a_0, X_i)}{\widehat{f}_M(M_i \mid A_i, X_i)} \{ Y_i - \widehat{\mu}(M_i, A_i, X_i) \}
+    \ + \ \frac{\mathbb{I}(A_i = a_0)}{\widehat{\pi}(a_0 \mid X_i)} \{\widehat{\xi}(M_i,X_i) - \widehat{\theta}(X_i) \}  \\ 
+    &\hspace{0.5cm} + \{\widehat{\eta}(1, X_i) - \widehat{\eta}(0, X_i)\} \{A_i - \widehat{\pi}(1 \mid X_i) \}  
    \ + \ \widehat{\theta}(X_i) \ \bigg]\ , \\
    &\text{where } \widehat{\cdot} \text{ denotes nuisance estimate}\ , \\
-   &\widehat{Q}=\left[\widehat{E}(Y\mid M,A,X),\ \widehat{p}(A\mid X),\ \widehat{p}(M\mid A,X),\ \widehat{p}(X)\right]\ , \\
+   &\widehat{Q}=[\widehat{E}(Y\mid M,A,X),\ \widehat{p}(A\mid X),\ \widehat{p}(M\mid A,X),\ \widehat{p}(X)]\ , \\
    &\widehat{p}(X) \text{ is the empirically estimated distribution of $X$, i.e. each value of $x$ observed in the data is assigned probability $p(X=x)=1/n$, otherwise $p(X=x)=0$}.
 \end{aligned}
 $$
@@ -151,7 +151,7 @@ $$
 
 ### Targeted Minimum Loss based Estimator (TMLE)
 
-For a dataset with sample size $n$. A **Targeted Minimum Loss based Estimator (TMLE)** can be constructed by updating the nuisance estimate $\widehat{f}_M,\,\widehat{\mu},\widehat{\pi}$ in $\widehat{Q}$. The TMLE-based nuisance estimate is denoted using $\widehat{\cdot}^\star$ as $\widehat{Q}^\star=\left[\widehat{E}^\star(Y\mid M,A,X),\ \widehat{\pi}^\star(A\mid X),\ \widehat{f}_M^\star(M\mid A,X),\ \widehat{p}(X)\right]$. The TMLE is then constructed based on the updated nuisance functionals as
+For a dataset with sample size $n$. A **Targeted Minimum Loss based Estimator (TMLE)** can be constructed by updating the nuisance estimate $\widehat{f}_M,\,\widehat{\mu},\widehat{\pi}$ in $\widehat{Q}$. The TMLE-based nuisance estimate is denoted using $\widehat{\cdot}^\star$ as $\widehat{Q}^\star=[\widehat{E}^\star(Y\mid M,A,X),\ \widehat{\pi}^\star(A\mid X),\ \widehat{f}_M^\star(M\mid A,X),\ \widehat{p}(X)]$. The TMLE is then constructed based on the updated nuisance functionals as
 
 
 
@@ -174,7 +174,7 @@ L_Y\left(\widetilde{\mu};\widehat{f}_M^\star \right)(O) &= \frac{\widehat{f}_M^\
 $$
 
 
-Put $\widehat{\mu}(\varepsilon_Y)(M, A, X)$ in the place of $\widetilde{\mu}$ in the loss function, and find $\varepsilon_Y^\star$, which minimizes the loss function $L_Y\left(\widehat{\mu}(\varepsilon_Y);\widehat{f}_M^\star \right)$. $\widehat{\mu}$ is then updated as $$\widehat{\mu}^\star=\widehat{\mu}+\varepsilon_Y^\star$$
+Put $\widehat{\mu}(\varepsilon_Y)(M, A, X)$ in the place of $\widetilde{\mu}$ in the loss function, and find $\varepsilon_Y^\star$, which minimizes the loss function $L_Y(\widehat{\mu}(\varepsilon_Y);\widehat{f}_M^\star )$. $\widehat{\mu}$ is then updated as $$\widehat{\mu}^\star=\widehat{\mu}+\varepsilon_Y^\star$$
 
 
 
