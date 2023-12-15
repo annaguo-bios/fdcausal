@@ -100,7 +100,7 @@ For a detailed discussion of the estimators, we refer readers to [Guo et al. 202
 
 
 
-$$\begin{align*} \psi(P)  = \iint \! \sum_{a=0}^1 y \ p(y \mid m, a, x) \ \! p(a \mid x) \  p(m \mid A=a_0, x) \  p(x) \  dy \  dm\  dx \ .        \quad \text{(target parameter)}      \end{align*}$$
+$$\begin{align*} \psi(P)  = \iint  \sum_{a=0}^1 y \ p(y \mid m, a, x) \  p(a \mid x) \  p(m \mid A=a_0, x) \  p(x) \  dy \  dm\  dx \ .        \quad \text{(target parameter)}      \end{align*}$$
 
 
 
@@ -157,7 +157,7 @@ For a dataset with sample size $n$. A **Targeted Minimum Loss based Estimator (T
 
 $$
 \begin{align*}
-\psi(\widehat{Q}^\star) = \!\! \iint \! \sum_{a=0}^1 \widehat{\mu}^\star(y\mid m,a,x) \ \! \widehat{\pi}^\star(a \mid x) \ \! \widehat{f}_M^\star(m \mid A=a_0, x) \ \! \widehat{p}(x) \ \! dm\ \! dx \ .    
+\psi(\widehat{Q}^\star) =  \iint  \sum_{a=0}^1 \widehat{\mu}^\star(y\mid m,a,x) \  \widehat{\pi}^\star(a \mid x) \  \widehat{f}_M^\star(m \mid A=a_0, x) \  \widehat{p}(x) \  dm\  dx \ .    
 \end{align*}
 $$
 
