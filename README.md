@@ -1,5 +1,22 @@
 # An R Package for Average Causal Effect Estimation via the Front-Door Functional
 
+---------------
+
+## Contents:
+
+  * ##### [Overview](## 1. Overview)
+    + ###### [Intro to Front-Door Model](### Intro to Front-Door Model)
+  * ##### [Installation](## 2. How to Install)
+  * ##### [Estimators](## 3. Estimators)
+    + ###### [Onestep Estimator](### One-step Estimator)
+    + ###### [Targeted Minimum Loss based Estimator (TMLE)](### Targeted Minimum Loss based Estimator (TMLE))
+  * ##### [Output](### 5. Results)
+  * ##### [References](## References)
+
+
+---------
+
+
 ## 1. Overview
 
 This package is built for estimating the Average Causal Effect (ACE) under the **Front-Door model**. This package is an implementation of the proposed estimators in the following paper. If you find this package useful, please cite the following paper:
