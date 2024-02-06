@@ -14,7 +14,7 @@
     + ###### [Nuisance Estimation](###Nuisance)
     + ###### [Estimation under different types of mediators](###Types)
   * ##### [Output](###Output)
-  * ##### [References](## References)
+  * ##### [References](##References)
 
 
 ---------
