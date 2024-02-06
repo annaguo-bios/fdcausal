@@ -4,24 +4,24 @@
 
 ## Contents:
 
-  * ##### [Overview](##Overview)
+  - ##### [Overview](##Overview)
     + ###### [Intro to Front-Door Model](###Intro)
-  * ##### [Installation](##Install)
-  * ##### [Estimators](##Estimators)
+  - ##### [Installation](##Install)
+  - ##### [Estimators](##Estimators)
     + ###### [Onestep Estimator](###Onestep)
     + ###### [Targeted Minimum Loss based Estimator (TMLE)](###TMLE)
-  * ##### [Detailed Discussion on Implementation](##Detailed)
+  - ##### [Detailed Discussion on Implementation](##Detailed)
     + ###### [Nuisance Estimation](###Nuisance)
     + ###### [Estimation under different types of mediators](###Types)
-  * ##### [Output](###Output)
-  * ##### [References](##References)
+  - ##### [Output](###Output)
+  - ##### [References](##References)
 
 
 ---------
 
 ## <a id="Overview"></a>1. Overview
 
-This package is built for estimating the Average Causal Effect (ACE) under the **Front-Door model**. This package is an implementation of the proposed estimators in the following paper. If you find this package useful, please cite the following paper:
+This package is built for estimating the Average Causal Effect (ACE) under the **Front-Door model**. This package is an implementation of the proposed estimators in the following paper. If you find this package useful, please cite this paper:
 
 ```
 @article{guo2023targeted,
