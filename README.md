@@ -2,7 +2,17 @@
 
 ## 1. Overview
 
-This package is built for estimating the Average Causal Effect (ACE) under the **Front-Door model**. 
+This package is built for estimating the Average Causal Effect (ACE) under the **Front-Door model**. This package is an implementation of the proposed estimators in the following paper. If you find this package useful, please cite the following paper:
+
+```
+@article{guo2023targeted,
+  title={Targeted Machine Learning for Average Causal Effect Estimation Using the Front-Door Functional},
+  author={Guo, Anna and Benkeser, David and Nabi, Razieh},
+  journal={arXiv preprint arXiv:2312.10234},
+  year={2023}
+}
+```
+
 
 ### Intro to Front-Door Model
 
