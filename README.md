@@ -4,7 +4,7 @@
 
 ## Contents:
 
-  * ##### [Overview](## 1. Overview)
+  * ##### [Overview](##Overview)
     + ###### [Intro to Front-Door Model](### Intro to Front-Door Model)
   * ##### [Installation](## 2. How to Install)
   * ##### [Estimators](## 3. Estimators)
@@ -16,8 +16,7 @@
 
 ---------
 
-
-## 1. Overview
+## <a id="Overview"></a>1. Overview
 
 This package is built for estimating the Average Causal Effect (ACE) under the **Front-Door model**. This package is an implementation of the proposed estimators in the following paper. If you find this package useful, please cite the following paper:
 
