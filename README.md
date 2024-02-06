@@ -19,7 +19,7 @@
 
 ---------
 
-## <a id="Overview"></a>1. Overview
+## <a id="Overview"></a>Overview
 
 This package is built for estimating the Average Causal Effect (ACE) under the **Front-Door model**. This package is an implementation of the proposed estimators in the following paper. If you find this package useful, please cite this paper:
 
@@ -257,7 +257,7 @@ This package incorporates different estimation schemes tailored to various types
 **Summary:** the `np` method allows estimation under univariate continuous mediator. The `densratio, bayes, dnorm` methods work for both univariate and multivariate mediators. The mediators can be binary, continuous, or a mixture of those two types. The `np` method involves direct estimation of the mediator density, and iterative updates among the outcome regression, propensity score, and mediator density in the TMLE procedure. Consequently, this method requires longer computational time. The TMLE procedure under `densratio, bayes, dnorm` does not require iterative updates among the nuisance functionals. Therefore, those methods are more computational efficient and is especially appealing to settings with multivariate mediators. 
 
 
-## <a id="Output"></a>5. Output
+## <a id="Output"></a>Output
 
 The output of the `TMLE()` function depends on the `mediator.method` used. As an example, we use `mediator.method=np` to estimate the average counterfactual outcome $E(Y^1)$. The output is described as follows
 
@@ -352,6 +352,6 @@ Output under mediator method `densratio, dnorm` is the same as above.
 
 ## <a id="References"></a>References
 - [Guo et al. 2023] Guo, A., Benkeser, D., & Nabi, R. **Targeted Machine Learning for Average Causal Effect Estimation Using the Front-Door Functional.** arXiv preprint arXiv:2312.10234, 2023.
-- [Fulcher et al. 2019] Fulcher I R, Shpitser I, Marealle S, et al.**Robust inference on population indirect causal effects: the generalized front door criterion.**Royal Statistical Society Series B: Statistical Methodology, 2020.
-- [Van der Laan et al. 2011] Van der Laan M J, Rose S.**Targeted learning: causal inference for observational and experimental data.**New York: Springer, 2011.
+- [Fulcher et al. 2019] Fulcher I R, Shpitser I, Marealle S, et al. **Robust inference on population indirect causal effects: the generalized front door criterion.** Royal Statistical Society Series B: Statistical Methodology, 2020.
+- [Van der Laan et al. 2011] Van der Laan M J, Rose S. **Targeted learning: causal inference for observational and experimental data.** New York: Springer, 2011.
 
