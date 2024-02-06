@@ -5,12 +5,15 @@
 ## Contents:
 
   * ##### [Overview](##Overview)
-    + ###### [Intro to Front-Door Model](### Intro to Front-Door Model)
-  * ##### [Installation](## 2. How to Install)
-  * ##### [Estimators](## 3. Estimators)
-    + ###### [Onestep Estimator](### One-step Estimator)
-    + ###### [Targeted Minimum Loss based Estimator (TMLE)](### Targeted Minimum Loss based Estimator (TMLE))
-  * ##### [Output](### 5. Results)
+    + ###### [Intro to Front-Door Model](###Intro)
+  * ##### [Installation](##Install)
+  * ##### [Estimators](##Estimators)
+    + ###### [Onestep Estimator](###Onestep)
+    + ###### [Targeted Minimum Loss based Estimator (TMLE)](###TMLE)
+  * ##### [Detailed Discussion on Implementation](##Detailed)
+    + ###### [Nuisance Estimation](###Nuisance)
+    + ###### [Estimation under different types of mediators](###Types)
+  * ##### [Output](###Output)
   * ##### [References](## References)
 
 
@@ -29,8 +32,7 @@ This package is built for estimating the Average Causal Effect (ACE) under the *
 }
 ```
 
-
-### Intro to Front-Door Model
+### <a id="Intro"></a>Intro to Front-Door Model
 
 A front-door model can be depicted in the following Directed Acyclic Graph (DAG), where $A$ is the treatment variable, $M$ is the mediator variable(s), $Y$ is the outcome variable, $X$ is the measured confounder variable(s), and $U$ is the unmeasured confounder(s).
 
@@ -110,8 +112,8 @@ cYcM <- TMLE(a=c(1,0),data=continuousY_continuousM,
 In the above code, `a=c(1,0)` specifies estimating ACE, contrasting treatment level $a=1$ verse $a=0$. `onestep=T` specifies output one-step estimator alongside the TMLE estimator.
 
 
+## <a id="Install"></a>2. How to Install
 
-## 2. How to Install
 
 ```R
 install.packages("remotes") # If you have not installed "remotes" package
@@ -120,7 +122,7 @@ remotes::install_github("annaguo-bios/fdtmle")
 
 The source code for **fdtmle** package is available on GitHub at [fdtmle](https://github.com/annaguo-bios/fdtmle/tree/main)
 
-## 3. Estimators
+## <a id="Estimators"></a>3. Estimators
 
 For a detailed discussion of the estimators, we refer readers to [Guo et al. 2023].For the ease of derivation, we set the average causal outcome under treatment level $A=a_0$, denoted by $E(Y^{a_0})$, as our target parameter of interest. ACE can be easily constructed as $E(Y^1)-E(Y^0)$. Under front-door model, the target parameter of interest can be identified via the following identification (ID) functional, where $P$ denotes the true observed data distribution:
 
@@ -155,7 +157,7 @@ $$
 
 Those four components corresponding to the projection of the EIF into the tangent space corresponding to $Y\mid M,A,X$, $M|A,X$, $A|X$, and $X$. 
 
-### One-step Estimator
+### <a id="Onestep"></a>One-step Estimator
 
 For a dataset with sample size $n$. A doubly robust **One-step Estimator** is suggested by the above EIF as
 
@@ -174,8 +176,8 @@ $$
 $$
 
 
+### <a id="TMLE"></a>Targeted Minimum Loss based Estimator (TMLE)
 
-### Targeted Minimum Loss based Estimator (TMLE)
 
 For a dataset with sample size $n$. A **Targeted Minimum Loss based Estimator (TMLE)** can be constructed by updating the nuisance estimate $\widehat{f}_M,\,\widehat{\mu},\widehat{\pi}$ in $\widehat{Q}$. The TMLE-based nuisance estimate is denoted using $\widehat{\cdot}^\star$ as $\widehat{Q}^\star=[\widehat{E}^\star(Y\mid M,A,X),\ \widehat{\pi}^\star(A\mid X),\ \widehat{f}_M^\star(M\mid A,X),\ \widehat{p}(X)]$. The TMLE is then constructed based on the updated nuisance functionals as
 
@@ -203,10 +205,10 @@ $$
 Put $\widehat{\mu}(\varepsilon_Y)(M, A, X)$ in the place of $\widetilde{\mu}$ in the loss function, and find $\varepsilon_Y^\star$, which minimizes the loss function $L_Y(\widehat{\mu}(\varepsilon_Y);\widehat{f}_M^\star )$. $\widehat{\mu}$ is then updated as $$\widehat{\mu}^\star=\widehat{\mu}+\varepsilon_Y^\star$$
 
 
+## <a id="Detailed"></a>4. Detailed Discussion on Implementation
 
-## 4. Detailed Discussion on Implementation
+### <a id="Nuisance"></a>4.1 Nuisance estimation 
 
-### 4.1 Nuisance estimation 
 
 The **TmleFrontdoor** package offers multiple ways for estimating the nuisance functionals.
 
@@ -235,8 +237,8 @@ cYcM <- TMLE(a=c(1,0),data=continuousY_continuousM_10dX, treatment="A", mediator
 ```
 
 
+### <a id="Types"></a>4.2 Estimation under different types of mediators
 
-### 4.2 Estimation under different types of mediators
 
 This package incorporates different estimation schemes tailored to various types of mediators. As mentioned in subsection~4.1, $f_M(M\mid A,X)$ is estimated via logistic regression under binary mediators. Different estimation strategies would be needed to handle other types of mediators. The mediator estimation is controlled by argument `mediator.method` with the default be `mediator.method=bayes`. We offer four estimation options towards mediator density:
 
@@ -255,8 +257,7 @@ This package incorporates different estimation schemes tailored to various types
 **Summary:** the `np` method allows estimation under univariate continuous mediator. The `densratio, bayes, dnorm` methods work for both univariate and multivariate mediators. The mediators can be binary, continuous, or a mixture of those two types. The `np` method involves direct estimation of the mediator density, and iterative updates among the outcome regression, propensity score, and mediator density in the TMLE procedure. Consequently, this method requires longer computational time. The TMLE procedure under `densratio, bayes, dnorm` does not require iterative updates among the nuisance functionals. Therefore, those methods are more computational efficient and is especially appealing to settings with multivariate mediators. 
 
 
-
-### 5. Results
+## <a id="Output"></a>5. Output
 
 The output of the `TMLE()` function depends on the `mediator.method` used. As an example, we use `mediator.method=np` to estimate the average counterfactual outcome $E(Y^1)$. The output is described as follows
 
@@ -349,9 +350,8 @@ E.Y0.obj <- cYcM$Onestep.Y0
 Output under mediator method `densratio, dnorm` is the same as above.
 
 
-
-## References
-
+## <a id="References"></a>References
+- [Guo et al. 2023] Guo, A., Benkeser, D., & Nabi, R. **Targeted Machine Learning for Average Causal Effect Estimation Using the Front-Door Functional.** arXiv preprint arXiv:2312.10234, 2023.
 - [Fulcher et al. 2019] Fulcher I R, Shpitser I, Marealle S, et al.**Robust inference on population indirect causal effects: the generalized front door criterion.**Royal Statistical Society Series B: Statistical Methodology, 2020.
 - [Van der Laan et al. 2011] Van der Laan M J, Rose S.**Targeted learning: causal inference for observational and experimental data.**New York: Springer, 2011.
 
