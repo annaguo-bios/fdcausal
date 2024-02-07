@@ -1,7 +1,7 @@
 # An R Package for Causal Effect Estimation via the Front-Door Functional
 
 
-This package is built for estimating the Average Causal Effect (ACE) under the **Front-Door model**. This package is an implementation of the proposed estimators by [Guo et al. 2023](https://arxiv.org/pdf/2312.10234.pdf), based on the theory of influence functions and targeted minimum loss based estimation (TMLE). 
+This package is built for estimating the Average Causal Effect (ACE) under the **Front-Door model** [Pearl. 1995]. This package is an implementation of the proposed estimators by [Guo et al. 2023](https://arxiv.org/pdf/2312.10234.pdf), based on the theory of influence functions and targeted minimum loss based estimation (TMLE). 
 
 If you find this package useful, please cite:
 
@@ -40,7 +40,7 @@ The source code for **fdtmle** package is available on GitHub at [fdtmle](https:
 
 The **fdtmle** package offers a `TMLE()` function, providing both one-step estimates and TMLEs of the average causal effect. The package is designed to specialize in estimation when $A$ is a univariate binary variable and $Y$ is a univariate variable, which can be either continuous or binary. Additionally, $X$ and $M$ have the flexibility to be either univariate or multivariate, accommodating a wide range of variable types.  
 
-The package also comes with three default datasets called `continuousY_continuousM`, `continuousY_continuousM_10dX`, and `boinaryY_bianryM`, which we have used to illustrate the use of the `TMLE()` function throughout this brief tutotrial. For details of the underlying DGPs, see Section 3.  
+The package also comes with three default datasets called `continuousY_continuousM`, `continuousY_continuousM_10dX`, and `boinaryY_bianryM`, which we have used to illustrate the use of the `TMLE()` function throughout this brief tutotrial. For details of the underlying DGPs, see Section 4.  
 
 The `TMLE()` function can be called by specifying the treatment assignement(s) `a`, `data`, `treatment`, `mediators`, `outcome`, and `covariates` as follows: 
 
@@ -255,12 +255,9 @@ generate_data <- function(n,parA = c(0.3,0.2), parU=c(1,1,1,0), parM = c(1,1,1,0
 continuousY_continuousM <- generate_data(500)$data
 ```
 
-### <a id="Types"></a>3.2 binaryY_binaryM
-
-
-
 ## <a id="References"></a>References
 - [Guo et al. 2023] Guo, A., Benkeser, D., & Nabi, R. **Targeted Machine Learning for Average Causal Effect Estimation Using the Front-Door Functional.** arXiv preprint arXiv:2312.10234, 2023.
+- [Pearl. 1995] Pearl, J. **Causal diagrams for empirical research.** Biometrika, 1995. 
 - [Fulcher et al. 2019] Fulcher I R, Shpitser I, Marealle S, & Tchetgen Tchetgen, E. **Robust inference on population indirect causal effects: the generalized front door criterion.** Royal Statistical Society Series B: Statistical Methodology, 2020.
 - [Van der Laan et al. 2011] Van der Laan M J, Rose S. **Targeted learning: causal inference for observational and experimental data.** New York: Springer, 2011.
 
