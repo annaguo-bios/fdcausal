@@ -38,31 +38,79 @@ The source code for **fdtmle** package is available on GitHub at [fdtmle](https:
 
 ### Description 
 
-The **fdtmle** package offers a `TMLE()` function, providing both one-step estimates and TMLEs of the average causal effect. The package is designed to specialize in estimation when $A$ is a univariate binary variable and $Y$ is a univariate variable, which can be either continuous or binary. Additionally, $X$ and $M$ have the flexibility to be either univariate or multivariate, accommodating a wide range of variable types. 
+The **fdtmle** package offers a `TMLE()` function, providing both one-step estimates and TMLEs of the average causal effect. The package is designed to specialize in estimation when $A$ is a univariate binary variable and $Y$ is a univariate variable, which can be either continuous or binary. Additionally, $X$ and $M$ have the flexibility to be either univariate or multivariate, accommodating a wide range of variable types.  
 
-### Usage
+The package also comes with three default datasets called `continuousY_continuousM`, `continuousY_continuousM_10dX`, and `boinaryY_bianryM`, which we have used to illustrate the use of the `TMLE()` function throughout this brief tutotrial. For details of the underlying DGPs, see Section 3.  
+
+The `TMLE()` function can be called by specifying the treatment assignement(s) `a`, `data`, `treatment`, `mediators`, `outcome`, and `covariates` as follows: 
 
 ```R
-
-# linkA specifies using "identity" link for fitting the logistic regression of A on X.
 
 cYcM <- TMLE(a=c(1,0), data=continuousY_continuousM,
              treatment="A", mediators="M", outcome="Y", covariates="X",
              onestep=T, linkA="identity") 
 ```
 
-### Arguments 
-`a=c(1,0)` specifies estimating ACE, contrasting treatment level $a=1$ verse $a=0$.  <br/>
-`onestep=T` specifies output one-step estimator alongside the TMLE estimator. <br/>
+In the above call to the `TMLE()` function, we have: <br/>
+`a=c(1,0)` specifies estimating ACE, contrasting treatment level $a=1$ versus $a=0$,  <br/>
+`onestep=T` specifies outputing one-step estimator alongside the TMLE estimator, and <br/> 
+`linkA` specifies using "identity" link for fitting the logistic regression of A on X.
+
+The `TMLE()` function comes with multiple different arguments that primarily determine the way the nuisance functions are estimated. A brief discussion on nuisance estiamtions is provided in the following section. 
+
+## <a id="Detailed"></a>2. Detailed Discussion on Implementation
+
+The front-door ID functional encompasses four nuisance functionals: **the outcome regression** $E(Y\mid M,A,X)$, the **propensity score** $p(A\mid X)$, the **mediator density** $p(M\mid A,X)$, and the marginal distribution of measured confounder(s) $p(X)$. Let $Q$ denote the collection of the four nuisance functionals: $Q=\{E(Y\mid M,A,X),p(A\mid X),p(M\mid A,X),p(X)\}$. The **fdtmle** package offers multiple ways for estimating the nuisance functionals, as discussed in the following. 
+
+### <a id="Nuisance"></a>2.1 Nuisance estimation 
+
+- <span style="color:red;">**Regression**</span>: the default method for estimating $E(Y\mid M,A,X)$ and $\pi(A\mid X)$ is via linear or logistic regression. The mediator density $f_M(M\mid A,X)$ is estimated with logistic regression under <ins>univariate binary</ins> mediator. For other types of mediator(s), we defer discussion to the next subsection. When nuisance functionals are estimated via regression based methods, the package allows the user to specify the regression formula with arguments 'formulaY', 'formulaA', and 'formulaM' for outcome regression, propensity score, and mediator density respectively. For binary variables, the link function used in logistic regression can be specified via 'linkY_binary', 'linkA', and 'linkM_binary'. For example, we can have:
+
+```R  
+  bYbM <- TMLE(a=1,data=binaryY_binaryM,
+               treatment="A", mediators="M", outcome="Y", covariates="X",
+               onestep=T,
+               formulaY="Y ~ .", formulaA="A ~ .", formulaM="M~.",
+               linkY_binary="logit", linkA="identity", linkM_binary="logit")
+```
+
+where `a=1` returns estimation results for $E(Y^1)$.  <br/>
+
+- <span style="color:red;">**Super learner**</span>: use argument `superlearner=T` in the `TMLE()` function to estimate nuisance functionals with the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package. The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation scheme. The default algorithms used for superlearner in the **fdtmle** package are `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users, however, can specify any algorithms incorporated in the **SuperLearner** package.  <br/>
+
+-  <span style="color:red;">**Cross-fitting with super learner**</span>: use the `crossfit=T` argument in the `TMLE()` function to estimate nuisance functionals using cross-fitting in conjuction with the use of a super learner. More specifically, data are partitioned into $K$ non-overlapping subsets of approximately equal size. For observations in each fold, prediction is made using super learner trained using observations excluding those in the current fold. Predictions for each fold is then combined to form the nuisance estimates for all observations. By adopting cross-fitting, the Donsker conditions are relaxed for achieving asympotical linearity of the estimators. The number of folds can be adjusted using the argument `K` with the default being set to $K=5$. As an example, the following code implements the ACE estimation using random forest combined with cross-fitting of $2$ folds.
+
+```R
+cYcM <- TMLE(a=c(1,0), data=continuousY_continuousM_10dX,
+             treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
+             onestep=T, crossfit=T, lib = c("SL.ranger"), K=2)
+```
 
 
-### Output
+### <a id="Types"></a>2.2 Estimation under different types of mediators
+
+
+This package incorporates different estimation schemes tailored to various types of mediators. As mentioned above, $f_M(M\mid A,X)$ is estimated via logistic regression under a binary mediator $M$. Different estimation strategies would be needed to handle other types of mediators, due to the complexity of (conditional) density estimations. We offer four different options to deal with the complexity of mediator density estimation. The choice can be controlled by argument `mediator.method`. 
+
+- <span style="color:red;"> `mediator.method=np` </span>: This method corresponds to direct estimation and targeting of the _mediator density_. When `np.dnorm=F`, $f_M(M\mid A,X)$ is estimated using the nonparametric kernel method via the [np](https://cran.r-project.org/web/packages/np/index.html) package. When `np.dnorm=T`, $f_M(M\mid A,X)$ is estimated assuming normal distribution. The mean of the normal distribution is estimated via the regression of $M$ on $A$ and $X$, and the standard deviation of the normal distribution is estimated via the sample standard devation of the error term in the regression. Given the computational burden imposed by direct estimation of the mediator density, this `np` method is only applicable to univariate continuous mediator.
+
+- <span style="color:red;"> `mediator.method=densratio` </span>: This method circumvents direct estimation of the mediator density by estimating its ratio $f_M(M\mid A=a_0,X)/f_M(M\mid A,X)$ instead, where $a_0$ is the treatment assignment of interest. For the _density ratio_ estimation we use the [densratio](https://cran.r-project.org/web/packages/densratio/index.html) package.
+
+- <span style="color:red;"> `mediator.method=bayes` </span>: This method estimates _density ratio_ $f_M(M\mid A=a,X)/f_M(M\mid A,X)$ by reformulating it using the Bayes' rule as follows:
+
+  $$\frac{f_M(M\mid A=a,X)}{f_M(M\mid A,X)} = \frac{p(a_0 \mid X, M)}{p(A \mid X, M)} \times \frac{\pi(A \mid X)}{\pi(a_0 \mid X)}.$$
+
+  The density ratio is estimated via estimating $p(A \mid X, M)$ and $\pi(A\mid X)$. $p(A \mid X, M)$ can be estimated via super learner, cross-fitting in conjunction with super learner, or logistic regression. When using logistic regression, `formula_bayes` and `link_bayes` arguments in `TMLE()` allow users to specify the formula and link function used in the logistic regression.
+
+- <span style="color:red;"> `mediator.method=dnorm` </span>: This method estimates _density ratio_, assuming that $M\mid A,X$ follows conditional normal distribution. The mean and standard deviation of the normal distribution are estimated using the same strategy as discussed in the `mediator.method=np` part. Estimates of the density ratio is then constructed as the ratio of the density estimates.
+
+**Summary:** The `np` method allows estimation under univariate continuous mediator, while the `densratio, bayes, dnorm` methods work for both univariate and multivariate mediators. The mediators can be binary, continuous, or a mix. The `np` method involves direct estimation of the mediator density, and the targeting step of the TMLE would require iterative updates between the outcome regression, propensity score, and mediator density. Consequently, this method is computationally more intensive. The TMLE procedure under `densratio, bayes, dnorm` does not require iterative updates among the nuisance functionals. Therefore, those methods are more computationally efficient and are especially appealing in settings with multivariate mediators. 
+
+## <a id="References"></a>3. Output
 
 The output of the `TMLE()` function depends on the `mediator.method` used. As an example, we use `mediator.method=np` to estimate the average counterfactual outcome $E(Y^1)$. The output is described as follows
 
 ```R
-set.seed(7)
-
 # Set a=1 returns estimation results on E(Y)
 cYcM <- TMLE(a=1,data=continuousY_continuousM, treatment="A", mediators="M", outcome="Y", covariates="X", 
              onestep=T, mediator.method = "np")
@@ -103,8 +151,6 @@ cYcM$Onestep$EDstar # a vector composes of the sample average of the projection 
 In the following, we use `mediator.method=bayes` to estimate ACE. The output is described as follows 
 
 ```R
-set.seed(7)
-
 cYcM <- TMLE(a=c(1,0),data=continuousY_continuousM_10dX, treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
              onestep=T, mediator.method = "bayes")
 
@@ -146,77 +192,12 @@ E.Y0.obj <- cYcM$Onestep.Y0
 # similar story as E.Y1.obj for TMLE #
 ```
 
-Output under mediator method `densratio, dnorm` is the same as above.
+Outputs under mediator methods `densratio, dnorm` are the same as above.
 
 
+## <a id="Types"></a>4 Illustrative DGPs
 
-## <a id="Detailed"></a>2. Detailed Discussion on Implementation
-
-The ID functional encompasses four nuisance functionals: **the outcome regression** $E(Y\mid M,A,X)$, the **propensity score** $p(A\mid X)$, the **mediator density** $p(M\mid A,X)$, and the marginal distribution of measured confounder(s) $p(X)$. Let $Q$ denotes the collection of the four nuisance functionals: $Q=[E(Y\mid M,A,X),p(A\mid X),p(M\mid A,X),p(X)]$. The **fdtmle** package offers multiple ways for estimating the nuisance functionals, as discussed in the following. 
-
-### <a id="Nuisance"></a>2.1 Nuisance estimation 
-
-- <span style="color:red;">**Regression**</span>: the default method for estimating $E(Y\mid M,A,X)$ and $\pi(A\mid X)$ is via linear or logistic regression. The mediator density $f_M(M\mid A,X)$ is estimated with logistic regression under \underline{univariate binary} mediator. For other types of mediator, we defer discussion to the mediator density estimation section. When nuisance functionals are estimated via regression based methods, the package allows user to specify the regression formula with argument 'formulaY', 'formulaA', and 'formulaM' for outcome regression, propensity score, and mediator density respectively. For binary variables, the link function used in logistic regression can be specified via 'linkY_binary', 'linkA', and 'linkM_binary'. For example
-
-  Set $a=1$ returns estimation results on $E(Y^1)$.
-
-  ```R
-  # binary Y and binary M
-  bYbM<- TMLE(a=1,data=binaryY_binaryM,
-              treatment="A", mediators="M", outcome="Y", covariates="X",
-              onestep=T,
-             formulaY="Y ~ .", formulaA="A ~ .", formulaM="M~.", linkY_binary="logit", linkA="identity", linkM_binary="logit")
-  ```
-
-  
-
-- <span style="color:red;">**Super learner**</span>: use argument `superlearner=T` in the `TMLE()` function to estimate nuisance functionals with [SuperLearner](https://cran.r-project.org/package=SuperLearner). The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation. The default algorithms used for superlearner in **fdtmle** package is `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users can specify any algorithms incorporated in the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package.
--  <span style="color:red;">**Cross-fitting with super learner**</span>: use argument `crossfit=T` in `TMLE()` function to estimate nuisance functionals using cross-fitting in conjuction with super learner. More specifically, data are partitioned into K non-overlapping subsets of approximately equal size. For observations in each fold, prediction is made using super learner trained using observations excluding those in the current fold. Predictions for each fold is then combined to form the nuisance estimates for all observations. By adopting cross-fitting, the Donsker condition is no longer required for achieving asympotical linearity of the estimators. The number of folds can be adjusted using argument `K` with the default be `K=5`. As an example, the following code implements ACE estimation using random forest combined with cross-fitting of 2 folds.
-
-```R
-set.seed(7)
-
-cYcM <- TMLE(a=c(1,0),data=continuousY_continuousM_10dX, treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
-             onestep=T, crossfit = T, lib = c("SL.ranger"), K=2)
-```
-
-
-### <a id="Types"></a>2.2 Estimation under different types of mediators
-
-
-This package incorporates different estimation schemes tailored to various types of mediators. As mentioned in subsection~4.1, $f_M(M\mid A,X)$ is estimated via logistic regression under binary mediators. Different estimation strategies would be needed to handle other types of mediators. The mediator estimation is controlled by argument `mediator.method` with the default be `mediator.method=bayes`. We offer four estimation options towards mediator density:
-
-- <span style="color:red;"> mediator.method=np </span>: This method corresponding to direct estimation and targeting of the _mediator density_. When `np.dnorm=F`, $f_M(M\mid A,X)$ is estimated using the nonparametric kernel method via the [np](https://cran.r-project.org/web/packages/np/index.html) package. When `np.dnorm=T`, $f_M(M\mid A,X)$ is estimated assuming normal distribution. The mean of the normal distribution is estimated via main terms regression of $M$ on $A$ and $X$, and the standard deviation of the normal distribution is estimated as the sample standard devation of the error term of the regression. Given the computational burden imposed by direct estimation of the mediator density, this `np` method is only applicable to univariate continuous mediator.
-
-- <span style="color:red;"> mediator.method=densratio </span>: This method circumvent direction estimation of the mediator density by estimating its ratio $f_M(M\mid A=a_0,X)/f_M(M\mid A,X)$ instead, where $a_0$ is the treatment level intervened. _Density ratio_ estimation is achieved via the [densratio](https://cran.r-project.org/web/packages/densratio/index.html) package.
-
-- <span style="color:red;"> mediator.method=bayes </span>: This method estimate _density ratio_ $f_M(M\mid A=a,X)/f_M(M\mid A,X)$ by reformula it with the Bayes' Theorem as follows
-
-  $$\frac{f_M(M\mid A=a,X)}{f_M(M\mid A,X)} = \frac{p(a_0 \mid X, M)}{p(A \mid X, M)} \times \frac{\pi(A \mid X)}{\pi(a_0 \mid X)}.$$
-
-  The density ratio is estimated via estimating $p(A \mid X, M)$ and $\pi(A\mid X)$. $p(A \mid X, M)$ can be estimated via super learn, cross-fitting in conjunction with super learner, or logistic regression. When using logistic regression, `formula_bayes` and `link_bayes` arguments in `TMLE()` allow users to specify the formula and link function used in logistic regression.
-
-- <span style="color:red;"> mediator.method=dnorm </span>: This method estimate _density ratio_, assuming that $M\mid A,X$ follows conditional normal distribution. The mean and standard deviation of the normal distribution is estimated using the same strategy as discussed under `mediator.method=np`. Estimates of the density ratio is then constructed as the ratio of the normal density.
-
-**Summary:** the `np` method allows estimation under univariate continuous mediator. The `densratio, bayes, dnorm` methods work for both univariate and multivariate mediators. The mediators can be binary, continuous, or a mixture of those two types. The `np` method involves direct estimation of the mediator density, and iterative updates among the outcome regression, propensity score, and mediator density in the TMLE procedure. Consequently, this method requires longer computational time. The TMLE procedure under `densratio, bayes, dnorm` does not require iterative updates among the nuisance functionals. Therefore, those methods are more computational efficient and is especially appealing to settings with multivariate mediators. 
-
-## <a id="References"></a>3. Illustrative examples
-
-The package comes with two default datasets called `continuousY_continuousM` and `boinaryY_bianryM`, which we have used to illustrate the use of the `TMLE()` function. For details of the underlying DGPs, see 3.1 and 3.2.  
-
-Here is an illustration of how to use the `TMLE()` function for computing the ACE using the dataset `continuousY_continuousM`, using both one-step estimator and TMLE. 
-
-```R
-
-# linkA specifies using "identity" link for fitting the logistic regression of A on X.
-
-cYcM <- TMLE(a=c(1,0), data=continuousY_continuousM,
-             treatment="A", mediators="M", outcome="Y", covariates="X",
-             onestep=T, linkA="identity") 
-```
-
-
-### <a id="Types"></a>3.1 continuousY_continuousM
+Here, we briefly look at the `continuousY_continuousM` dataset. 
 
 ```R
 str(continuousY_continuousM)
