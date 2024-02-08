@@ -112,8 +112,9 @@ The output of the `TMLE()` function depends on the `mediator.method` used. As an
 
 ```R
 # Set a=1 returns estimation results on E(Y)
-cYcM <- TMLE(a=1,data=continuousY_continuousM, treatment="A", mediators="M", outcome="Y", covariates="X", 
-             onestep=T, mediator.method = "np")
+cYcM <- TMLE(a=1, data=continuousY_continuousM,
+             treatment="A", mediators="M", outcome="Y", covariates="X", 
+             onestep=T, mediator.method="np")
 
 ## TMLE output ##
 cYcM$TMLE$estimated_psi # point estimate of the target parameter E(Y^1).
@@ -151,7 +152,8 @@ cYcM$Onestep$EDstar # a vector composes of the sample average of the projection 
 In the following, we use `mediator.method=bayes` to estimate ACE. The output is described as follows 
 
 ```R
-cYcM <- TMLE(a=c(1,0),data=continuousY_continuousM_10dX, treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
+cYcM <- TMLE(a=c(1,0), data=continuousY_continuousM_10dX,
+             treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
              onestep=T, mediator.method = "bayes")
 
 ## TMLE output ##
