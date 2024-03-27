@@ -208,26 +208,15 @@ TMLE <- function(a,data,treatment, mediators, outcome, covariates,
 
       }
 
-  }else if (a==1) { ## E(Y^1) estimate ==
+  }else if (length(a)==1) { ## E(Y^1) estimate ==
 
-    out.a1 <- TMLE.all(a=1,data=data,treatment=treatment, mediators=mediators, outcome=outcome, covariates=covariates,
+    out.a <- TMLE.all(a=a,data=data,treatment=treatment, mediators=mediators, outcome=outcome, covariates=covariates,
                        onestep=onestep, mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
                        lib = lib, n.iter=n.iter, eps=eps, cvg.criteria=cvg.criteria,
                        formulaY=formulaY, formulaA=formulaA, formulaM=formulaM, linkY_binary=linkY_binary, linkA=linkA, linkM_binary=linkM_binary,
                        formula_bayes=formula_bayes,link_bayes=link_bayes,
                        truncate_lower=truncate_lower, truncate_upper=truncate_upper)
-    return(out.a1)
-
-  }else if (a==0){ ## E(Y^0) estimate ==
-
-    out.a0 <- TMLE.all(a=0,data=data,treatment=treatment, mediators=mediators, outcome=outcome, covariates=covariates,
-                       onestep=onestep, mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
-                       lib = lib, n.iter=n.iter, eps=eps, cvg.criteria=cvg.criteria,
-                       formulaY=formulaY, formulaA=formulaA, formulaM=formulaM, linkY_binary=linkY_binary, linkA=linkA, linkM_binary=linkM_binary,
-                       formula_bayes=formula_bayes,link_bayes=link_bayes,
-                       truncate_lower=truncate_lower, truncate_upper=truncate_upper)
-
-    return(out.a0)
+    return(out.a)
 
   }
 
