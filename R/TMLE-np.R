@@ -35,9 +35,12 @@
 #'       \item{\code{iter}}{Number of iterations where convergence is achieved for the iterative update of the mediator density and propensity score.}}
 #' @examples
 #' \donttest{
-#' TMLE.np(1,data,treatment="A", mediators="M", outcome="Y", covariates="X")
+#' res <- TMLE.np(1,data=continuousY_continuousM,
+#' treatment="A", mediator="M", outcome="Y", covariates="X")
 #' }
-#' @import np dplyr
+#' @import np
+#' @importFrom dplyr %>% mutate select
+#' @importFrom MASS mvrnorm
 #' @export
 
 TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=c("X1","X2","X3"),
@@ -45,7 +48,7 @@ TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=
                     formulaY="Y ~ .", formulaA="A ~ .", linkA="logit",
                     truncate_lower=0, truncate_upper=1){
 
-  attach(data, warn.conflicts=FALSE)
+  # attach(data, warn.conflicts=FALSE)
 
   # Variables
   A <- data[,treatment]
@@ -57,9 +60,8 @@ TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=
 
   n <- nrow(data)
 
-  if (length(covariates)==1){ # covariaets is of length 1, rename the covariate to "X"
-    covariaets = "X"
-  }
+  # covariates is of length 1, rename the covariate to "X"
+  if (length(covariates)==1){ covariates = "X" }
 
   ######################
   ## store data for TMLE

@@ -24,7 +24,12 @@ A Sample Data for Analysis
 \examples{
 \donttest{
 # data generated with the following Data Generating Process (DGP)
-generate_data <- function(n,parA = c(0.3,0.2), parU=c(1,1,1,0), parM = c(1,1,1,0), parY = c(1, 1, 1, 0), sd.M=1, sd.U=1){
+generate_data <- function(n,
+parA = c(0.3,0.2),
+parU=c(1,1,1,0),
+parM = c(1,1,1,0),
+parY = c(1, 1, 1, 0),
+sd.M=1, sd.U=1){
 
  X <- runif(n, 0, 1) # p(X)
 
@@ -42,8 +47,10 @@ generate_data <- function(n,parA = c(0.3,0.2), parU=c(1,1,1,0), parM = c(1,1,1,0
  ps <- A*(parA[1] + parA[2]*X)+(1-A)*(1-(parA[1] + parA[2]*X))
 
  # mediator density ratio: p(M|a,X)/p(M|A,X)
- m.ratio.a1 <- dnorm(M,parM[1] + parM[2]*1 + parM[3]*X + parM[4]*1*X,sd.M)/dnorm(M,parM[1] + parM[2]*A + parM[3]*X + parM[4]*A*X,sd.M)
- m.ratio.a0 <- dnorm(M,parM[1] + parM[2]*0 + parM[3]*X + parM[4]*0*X,sd.M)/dnorm(M,parM[1] + parM[2]*A + parM[3]*X + parM[4]*A*X,sd.M)
+ m.ratio.a1 <- dnorm(M,parM[1] + parM[2]*1 + parM[3]*X + parM[4]*1*X,sd.M)/
+ dnorm(M,parM[1] + parM[2]*A + parM[3]*X + parM[4]*A*X,sd.M)
+ m.ratio.a0 <- dnorm(M,parM[1] + parM[2]*0 + parM[3]*X + parM[4]*0*X,sd.M)/
+ dnorm(M,parM[1] + parM[2]*A + parM[3]*X + parM[4]*A*X,sd.M)
 
  return(list(data = data,
              parA=parA,

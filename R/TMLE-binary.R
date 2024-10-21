@@ -20,14 +20,16 @@
 #' @param linkA The link function used for the logistic regression of A on X. The default is the 'logit' link.
 #' @param formulaM Regression formula for the mediator density regression of M on A and X. The default is 'M ~ 1 + A + X'. This parameter is only needed when M is a univariate binary mediator.
 #' @param linkM_binary The link function used for the logistic regression of M on A and X. The default is the 'logit' link. This parameter is only needed when M is a univariate binary mediator.
-#' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.
-#' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 1.
+#' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.01.
+#' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 0.99.
 #' @return a list of initialization of matrices.
 #' @examples
 #' \donttest{
-#' TMLE.binary(a=1,data,treatment="A", mediators="M", outcome="Y", covariates="X")
+#' res <- TMLE.binary(a=1,data=continuousY_binaryM,
+#' treatment="A", mediator="M", outcome="Y", covariates="X")
 #' }
 #' @import SuperLearner
+#' @importFrom dplyr %>% mutate select
 #' @return Function outputs a list containing TMLE output (and Onestep estimator output if 'onestep=T' is specified):
 #' \describe{
 #'       \item{\code{estimated_psi}}{The estimated parameter of interest: \eqn{E(Y^a)}}
@@ -48,12 +50,12 @@
 #'
 
 TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
-                        onestep=T, superlearner=T,crossfit=F,K=5,
+                        onestep=TRUE, superlearner=TRUE,crossfit=FALSE,K=5,
                         lib = c("SL.glm","SL.earth","SL.ranger","SL.mean"), n.iter=500, cvg.criteria=0.01,
                         formulaY="Y ~ .", formulaA="A ~ .", formulaM="M~.", linkY_binary="logit", linkA="logit", linkM_binary="logit",
-                        truncate_lower=0, truncate_upper=1){
+                        truncate_lower=0.01, truncate_upper=0.99){
 
-  attach(data, warn.conflicts=FALSE)
+  # attach(data, warn.conflicts=FALSE)
 
   n <- nrow(data)
   # Variables
@@ -405,6 +407,8 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
                         EIF=EIF, # EIF
                         EDstar=c(EDstar_or,EDstar_M, EDstar_ps)) # E(Dstar) for Y|M,A,X and M|A,X, and A|X
 
+    print("One step estimator done")
+
   }
 
 
@@ -490,6 +494,8 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
       eps2 <-  coef(M_model)
       eps2_vec <- c(eps2_vec,eps2)
 
+      # print(paste0('iter: ',iter,'. M model done. eps=',eps2))
+
       # update cumulative summation of eps2*clever coefficient
       clever_coef2_add = clever_coef2_add + eps2*(clever_coef2)
 
@@ -522,6 +528,8 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
       eps3 <- coef(ps_model)
       eps3_vec <- c(eps3_vec,eps3)
 
+      # print(paste0('iter: ',iter,'. A model done. eps=',eps3))
+
       # update cumulative summation of eps3*clever coefficient
       clever_coef3_add = clever_coef3_add + eps3*(clever_coef3)
 
@@ -553,6 +561,8 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
 
       eps1 = coef(or_model)
       eps1_vec <- c(eps1_vec,eps1)
+
+      # print(paste0('iter: ',iter,'. Y model done. eps=',eps1))
 
       # update cumulative summation of eps1*clever coefficient
       clever_coef1_add = clever_coef1_add + eps1*(clever_coef1)

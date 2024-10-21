@@ -35,9 +35,12 @@
 #'       \item{\code{iter}}{Number of iterations where convergence is achieved for the iterative update of the mediator density and propensity score.}}
 #' @examples
 #' \donttest{
-#' TMLE.np(1,data,treatment="A", mediators="M", outcome="Y", covariates=c("X1","X2"))
+#' res <- TMLE.np.dnorm(1,data=continuousY_continuousM,
+#' treatment="A", mediator="M", outcome="Y", covariates="X")
 #' }
-#' @import np dplyr
+#' @import np
+#' @importFrom MASS mvrnorm
+#' @importFrom dplyr %>% mutate select
 #' @export
 
 TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=c("X1","X2","X3"),
@@ -45,7 +48,7 @@ TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", covar
                     formulaY="Y ~ .", formulaA="A ~ .", linkA="logit",
                     truncate_lower=0, truncate_upper=1){
 
-  attach(data, warn.conflicts=FALSE)
+  # attach(data, warn.conflicts=FALSE)
 
   # Variables
   A <- data[,treatment]
@@ -432,7 +435,6 @@ TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", covar
                    eps3_vec=eps3_vec, # vector of eps3 over iterations
                    iter=iter) # number of iterations for M|A,X and A|X to converge
 
-  if (onestep==T){return(list(TMLE=tmle.out,Onestep=onestep.out))}
-  else if (onestep==F){return(TMLE=tmle.out)}
+  if (onestep==T){return(list(TMLE=tmle.out,Onestep=onestep.out))}else{return(TMLE=tmle.out)}
 
 }

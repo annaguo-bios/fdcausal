@@ -24,7 +24,12 @@ A Sample Data for Testing Out the Performance of TMLE in Dealing with Weak Overl
 \examples{
 \donttest{
 # data generated with the following Data Generating Process (DGP)
-generate_data <- function(n,parA = c(0.001,0.998), parU=c(1,1,1,0), parM = c(-1,1,1,0), parY = c(1, 1, 1, 0), sd.U=1, sd.Y=1){
+generate_data <- function(n,
+parA = c(0.001,0.998),
+parU=c(1,1,1,0),
+parM = c(-1,1,1,0),
+parY = c(1, 1, 1, 0),
+sd.U=1, sd.Y=1){
 
  X <- runif(n, 0, 1) # p(X)
 
@@ -42,8 +47,10 @@ generate_data <- function(n,parA = c(0.001,0.998), parU=c(1,1,1,0), parM = c(-1,
  ps <- A*(parA[1] + parA[2]*X)+(1-A)*(1-(parA[1] + parA[2]*X))
 
  # mediator density ratio: p(M|a,X)/p(M|A,X)
- m.ratio.a1 <- dbinom(M,1,plogis(parM[1] + parM[2]*1 + parM[3]*X + parM[4]*1*X))/dbinom(M,1,plogis(parM[1] + parM[2]*A + parM[3]*X + parM[4]*A*X))
- m.ratio.a0 <- dbinom(M,1,plogis(parM[1] + parM[2]*0 + parM[3]*X + parM[4]*0*X))/dbinom(M,1,plogis(parM[1] + parM[2]*A + parM[3]*X + parM[4]*A*X))
+ m.ratio.a1 <- dbinom(M,1,plogis(parM[1] + parM[2]*1 + parM[3]*X + parM[4]*1*X))/
+ dbinom(M,1,plogis(parM[1] + parM[2]*A + parM[3]*X + parM[4]*A*X))
+ m.ratio.a0 <- dbinom(M,1,plogis(parM[1] + parM[2]*0 + parM[3]*X + parM[4]*0*X))/
+ dbinom(M,1,plogis(parM[1] + parM[2]*A + parM[3]*X + parM[4]*A*X))
 
 
  return(list(data = data,

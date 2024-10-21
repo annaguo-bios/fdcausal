@@ -24,7 +24,11 @@ A Sample Data for Analysis
 \examples{
 \donttest{
 # data generated with the following Data Generating Process (DGP)
-generate_data <- function(n,parA = c(0.3,0.2), parU=c(1,1,1,0), parM = matrix(c(1, 1, 1, 0,-1,-0.5,2,0), nrow = 2,byrow = T), parY = c(1, 1, -0.5,1, 0), sd.U=1){
+generate_data <- function(n,
+parA = c(0.3,0.2),
+parU=c(1,1,1,0),
+parM = matrix(c(1, 1, 1, 0,-1,-0.5,2,0), nrow = 2,byrow = T),
+parY = c(1, 1, -0.5,1, 0), sd.U=1){
 
  ########################################################
  # M is bivariate normal with mean parameter be
@@ -43,9 +47,11 @@ generate_data <- function(n,parA = c(0.3,0.2), parU=c(1,1,1,0), parM = matrix(c(
  U <- parU[1] + parU[2]*A + parU[3]*X + parU[4]*A*X + rnorm(n,0,sd.U) # p(U|A,X)
 
  M <- cbind(parM[1,1] + parM[1,2]*A + parM[1,3]*X + parM[1,4]*A*X,
-            parM[2,1] + parM[2,2]*A + parM[2,3]*X + parM[2,4]*A*X)+ mvrnorm(n , mu =c(0,0) , Sigma = matrix(c(2, 1, 1, 3), nrow = 2))
+            parM[2,1] + parM[2,2]*A + parM[2,3]*X + parM[2,4]*A*X)+
+            mvrnorm(n , mu =c(0,0) , Sigma = matrix(c(2, 1, 1, 3), nrow = 2))
 
- Y <- rbinom(n,1,plogis(parY[1]*U + parY[2]*M[,1]+ parY[3]*M[,2] + parY[4]*X + parY[5]*M[,1]*X)) # p(Y|U,M,X)
+ Y <- rbinom(n,1,plogis(parY[1]*U + parY[2]*M[,1]+
+ parY[3]*M[,2] + parY[4]*X + parY[5]*M[,1]*X)) # p(Y|U,M,X)
 
  data <- data.frame(X=X, U=U, A=A, M=M, Y=Y)
 
@@ -55,13 +61,19 @@ generate_data <- function(n,parA = c(0.3,0.2), parU=c(1,1,1,0), parM = matrix(c(
  # mediator density ratio: p(M|a,X)/p(M|A,X)
  f.m.ratio.a1 <- function(i){
    dmvnorm(x=M[i,], mean=cbind(parM[1,1] + parM[1,2]*1 + parM[1,3]*X[i] + parM[1,4]*1*X[i],
-                               parM[2,1] + parM[2,2]*1 + parM[2,3]*X[i] + parM[2,4]*1*X[i]),sigma=matrix(c(2, 1, 1, 3), nrow = 2))/
-     dmvnorm(x=M[i,], mean=cbind(parM[1,1] + parM[1,2]*A[i] + parM[1,3]*X[i] + parM[1,4]*A[i]*X[i], parM[2,1] + parM[2,2]*A[i] + parM[2,3]*X[i] + parM[2,4]*A[i]*X[i]),sigma=matrix(c(2, 1, 1, 3), nrow = 2))
+                               parM[2,1] + parM[2,2]*1 + parM[2,3]*X[i] + parM[2,4]*1*X[i]),
+                               sigma=matrix(c(2, 1, 1, 3), nrow = 2))/
+     dmvnorm(x=M[i,], mean=cbind(parM[1,1] + parM[1,2]*A[i] + parM[1,3]*X[i] + parM[1,4]*A[i]*X[i],
+     parM[2,1] + parM[2,2]*A[i] + parM[2,3]*X[i] + parM[2,4]*A[i]*X[i]),
+     sigma=matrix(c(2, 1, 1, 3), nrow = 2))
  }
  f.m.ratio.a0 <- function(i){
    dmvnorm(x=M[i,], mean=cbind(parM[1,1] + parM[1,2]*0 + parM[1,3]*X[i] + parM[1,4]*0*X[i],
-                               parM[2,1] + parM[2,2]*0 + parM[2,3]*X[i] + parM[2,4]*0*X[i]),sigma=matrix(c(2, 1, 1, 3), nrow = 2))/
-     dmvnorm(x=M[i,], mean=cbind(parM[1,1] + parM[1,2]*A[i] + parM[1,3]*X[i] + parM[1,4]*A[i]*X[i], parM[2,1] + parM[2,2]*A[i] + parM[2,3]*X[i] + parM[2,4]*A[i]*X[i]),sigma=matrix(c(2, 1, 1, 3), nrow = 2))
+                               parM[2,1] + parM[2,2]*0 + parM[2,3]*X[i] + parM[2,4]*0*X[i]),
+                               sigma=matrix(c(2, 1, 1, 3), nrow = 2))/
+     dmvnorm(x=M[i,], mean=cbind(parM[1,1] + parM[1,2]*A[i] + parM[1,3]*X[i] + parM[1,4]*A[i]*X[i],
+     parM[2,1] + parM[2,2]*A[i] + parM[2,3]*X[i] + parM[2,4]*A[i]*X[i]),
+     sigma=matrix(c(2, 1, 1, 3), nrow = 2))
  }
 
  m.ratio.a1 <- sapply(1:n, f.m.ratio.a1)

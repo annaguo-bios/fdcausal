@@ -78,6 +78,7 @@ Function for implementing TMLE with the mediator density \eqn{p(M|A,X)} estimate
 }
 \examples{
 \donttest{
-TMLE.np(1,data,treatment="A", mediators="M", outcome="Y", covariates="X")
+res <- TMLE.np(1,data=continuousY_continuousM,
+treatment="A", mediator="M", outcome="Y", covariates="X")
 }
 }

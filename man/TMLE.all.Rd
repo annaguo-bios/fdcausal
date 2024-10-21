@@ -11,15 +11,15 @@ TMLE.all(
   mediators,
   outcome,
   covariates,
-  onestep = T,
+  onestep = TRUE,
   mediator.method = "bayes",
-  np.dnorm = T,
-  superlearner = F,
-  crossfit = F,
+  np.dnorm = TRUE,
+  superlearner = FALSE,
+  crossfit = FALSE,
   K = 5,
   lib = c("SL.glm", "SL.earth", "SL.ranger", "SL.mean"),
   n.iter = 500,
-  eps = T,
+  eps = TRUE,
   cvg.criteria = 0.01,
   formulaY = "Y ~ .",
   formulaA = "A ~ .",
@@ -121,23 +121,41 @@ Function for average counterfactual outcome E(Y(a)) estimation. Implementing TML
 \examples{
 \donttest{
 # E(Y(1)) estimation. For binary outcome Y and binary mediator M.
-# Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-TMLE.all(a=1,data=binaryY_binaryM,treatment="A", mediators="M", outcome="Y", covariates="X", onestep=T, linkA="identity")
+# Data is generated under p(A=1|X) = 0.3 + 0.2X.
+# Therefore, setting link for propensity score to be "identity".
+res <-TMLE.all(a=1,data=binaryY_binaryM,
+treatment="A", mediators="M", outcome="Y", covariates="X",
+ onestep=TRUE, linkA="identity")
 
 # E(Y(1)) estimation. For continuous outcome Y and binary mediator M
-# Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-TMLE.all(a=1,data=continuousY_binaryM,treatment="A", mediators="M", outcome="Y", covariates="X", onestep=T, linkA="identity")
+# Data is generated under p(A=1|X) = 0.3 + 0.2X.
+# Therefore, setting link for propensity score to be "identity".
+res <-TMLE.all(a=1,data=continuousY_binaryM,
+treatment="A", mediators="M", outcome="Y", covariates="X",
+ onestep=TRUE, linkA="identity")
 
-# E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M. Using 'densratio' method for mediator density estimation.
-# Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-TMLE.all(a=1,data=continuousY_bivariateM,treatment="A", mediators=c("M.2","M.2"), outcome="Y", covariates="X", onestep=T, linkA="identity", mediator.method="densratio")
+# E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M.
+# Using 'densratio' method for mediator density estimation.
+# Data is generated under p(A=1|X) = 0.3 + 0.2X.
+# Therefore, setting link for propensity score to be "identity".
+res <-TMLE.all(a=1,data=continuousY_bivariateM,
+treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
+ onestep=TRUE, linkA="identity", mediator.method="densratio")
 
-# E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M. Using 'bayes' method for mediator density estimation.
-# Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-TMLE.all(a=1,data=continuousY_bivariateM,treatment="A", mediators=c("M.2","M.2"), outcome="Y", covariates="X", onestep=T, linkA="identity", mediator.method="bayes")
+# E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M.
+# Using 'bayes' method for mediator density estimation.
+# Data is generated under p(A=1|X) = 0.3 + 0.2X.
+# Therefore, setting link for propensity score to be "identity".
+res <-TMLE.all(a=1,data=continuousY_bivariateM,
+treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
+ onestep=TRUE, linkA="identity", mediator.method="bayes")
 
-# E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M. Using 'dnorm' method for mediator density estimation.
-# Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-TMLE.all(a=1,data=continuousY_bivariateM,treatment="A", mediators=c("M.2","M.2"), outcome="Y", covariates="X", onestep=T, linkA="identity", mediator.method="dnorm")
+# E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M.
+# Using 'dnorm' method for mediator density estimation.
+# Data is generated under p(A=1|X) = 0.3 + 0.2X.
+# Therefore, setting link for propensity score to be "identity".
+res <- TMLE.all(a=1,data=continuousY_bivariateM,
+treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
+onestep=TRUE, linkA="identity", mediator.method="dnorm")
 }
 }

@@ -1,7 +1,9 @@
-calculate_M_AX_ratio_dnorm <- function(a,M,A,X){ # A is a vector, M and X are data frame
+calculate_M_AX_ratio_dnorm <- function(a,M,A,X, ATT = F){ # A is a vector, M and X are data frame
 
   num_columns <- ncol(M)
   num_rows <- nrow(M)
+
+  alt <- 1-a # alternative level of treatment
 
   # Initialize an empty matrix to store the fitted coefficients
   fit.parM <- matrix(NA, nrow = num_columns, ncol = 2 + ncol(X)) # ncol: 1 for the intercept + 1 for A + ncol(X) for X
@@ -45,7 +47,7 @@ calculate_M_AX_ratio_dnorm <- function(a,M,A,X){ # A is a vector, M and X are da
     dmvnorm(
       x = M[j, ],
       mean = rowSums(cbind(fit.parM[,1], # intercept
-                   fit.parM[,2]*a, # coeffA*A
+                   fit.parM[,2]*a, # coeffA*a
                    fit.parM[,3:ncol(fit.parM)] %*% t(X[j, ]))), # coeffX*X
       sigma = varcov
     ) / dmvnorm(
@@ -57,8 +59,26 @@ calculate_M_AX_ratio_dnorm <- function(a,M,A,X){ # A is a vector, M and X are da
     )
   }
 
+  f.m.ratio.a.alt <- function(j) {
+    dmvnorm(
+      x = M[j, ],
+      mean = rowSums(cbind(fit.parM[,1], # intercept
+                           fit.parM[,2]*a, # coeffA*a
+                           fit.parM[,3:ncol(fit.parM)] %*% t(X[j, ]))), # coeffX*X
+      sigma = varcov
+    ) / dmvnorm(
+      x = M[j, ],
+      mean = rowSums(cbind(fit.parM[,1], # intercept
+                           fit.parM[,2]*alt, # coeffA*a'
+                           fit.parM[,3:ncol(fit.parM)] %*% t(X[j, ]))), # coeffX*X
+      sigma = varcov
+    )
+  }
+
   # Apply the function to each row of M
   M.AXratio <- sapply(1:num_rows, f.m.ratio.a)
+  M.altXratio <- sapply(1:num_rows, f.m.ratio.a.alt)
 
-  return(M.AXratio)
+  if(ATT==T){return(M.altXratio)}else{return(M.AXratio)}
+
 }

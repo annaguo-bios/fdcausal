@@ -34,8 +34,8 @@
 #' @param linkM_binary The link function used for the logistic regression of M on A and X. The default is the 'logit' link. This parameter is only needed when M is a univariate binary mediator.
 #' @param formula_bayes Regression formula for the regression of A on M and X. The default is 'A ~ 1 + M + X'. This parameter is only needed when mediator.method="bayes".
 #' @param link_bayes The link function used for the logistic regression of A on M and X. The default is 'logit' link. This parameter is only needed when mediator.method="bayes".
-#' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.
-#' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 1.
+#' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.01.
+#' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 0.99.
 #' @param np.dnorm A logic variable. If np.dnorm=T, p(M|A,X) is directly estimated assuming normal distribution. If np.dnorm=F, p(M|A,X) is directly estimated using the \link[np]{npcdens} function.
 #' @return Function outputs a list containing TMLE results (and Onestep results if 'onestep=T' is specified):
 #' \describe{
@@ -56,38 +56,58 @@
 #' @examples
 #' \donttest{
 #' # E(Y(1)) estimation. For binary outcome Y and binary mediator M.
-#' # Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-#' TMLE.all(a=1,data=binaryY_binaryM,treatment="A", mediators="M", outcome="Y", covariates="X", onestep=T, linkA="identity")
+#' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
+#' # Therefore, setting link for propensity score to be "identity".
+#' res <-TMLE.all(a=1,data=binaryY_binaryM,
+#' treatment="A", mediators="M", outcome="Y", covariates="X",
+#'  onestep=TRUE, linkA="identity")
 #'
 #' # E(Y(1)) estimation. For continuous outcome Y and binary mediator M
-#' # Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-#' TMLE.all(a=1,data=continuousY_binaryM,treatment="A", mediators="M", outcome="Y", covariates="X", onestep=T, linkA="identity")
+#' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
+#' # Therefore, setting link for propensity score to be "identity".
+#' res <-TMLE.all(a=1,data=continuousY_binaryM,
+#' treatment="A", mediators="M", outcome="Y", covariates="X",
+#'  onestep=TRUE, linkA="identity")
 #'
-#' # E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M. Using 'densratio' method for mediator density estimation.
-#' # Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-#' TMLE.all(a=1,data=continuousY_bivariateM,treatment="A", mediators=c("M.2","M.2"), outcome="Y", covariates="X", onestep=T, linkA="identity", mediator.method="densratio")
+#' # E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M.
+#' # Using 'densratio' method for mediator density estimation.
+#' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
+#' # Therefore, setting link for propensity score to be "identity".
+#' res <-TMLE.all(a=1,data=continuousY_bivariateM,
+#' treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
+#'  onestep=TRUE, linkA="identity", mediator.method="densratio")
 #'
-#' # E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M. Using 'bayes' method for mediator density estimation.
-#' # Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-#' TMLE.all(a=1,data=continuousY_bivariateM,treatment="A", mediators=c("M.2","M.2"), outcome="Y", covariates="X", onestep=T, linkA="identity", mediator.method="bayes")
+#' # E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M.
+#' # Using 'bayes' method for mediator density estimation.
+#' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
+#' # Therefore, setting link for propensity score to be "identity".
+#' res <-TMLE.all(a=1,data=continuousY_bivariateM,
+#' treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
+#'  onestep=TRUE, linkA="identity", mediator.method="bayes")
 #'
-#' # E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M. Using 'dnorm' method for mediator density estimation.
-#' # Data is generated under p(A=1|X) = 0.3 + 0.2X. Therefore, setting link for propensity score to be "identity".
-#' TMLE.all(a=1,data=continuousY_bivariateM,treatment="A", mediators=c("M.2","M.2"), outcome="Y", covariates="X", onestep=T, linkA="identity", mediator.method="dnorm")
+#' # E(Y(1)) estimation. For continuous outcome Y and bivariate mediator M.
+#' # Using 'dnorm' method for mediator density estimation.
+#' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
+#' # Therefore, setting link for propensity score to be "identity".
+#' res <- TMLE.all(a=1,data=continuousY_bivariateM,
+#' treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
+#' onestep=TRUE, linkA="identity", mediator.method="dnorm")
 #' }
-#' @import np dplyr MASS densratio SuperLearner mvtnorm stats
+#' @import np densratio SuperLearner mvtnorm stats
+#' @importFrom dplyr %>% mutate select
+#' @importFrom MASS mvrnorm
 #' @export
 #'
 #'
 TMLE.all <- function(a,data,treatment, mediators, outcome, covariates,
-                     onestep=T, mediator.method="bayes", np.dnorm=T, superlearner=F, crossfit=F,K=5,
-                     lib = c("SL.glm","SL.earth","SL.ranger","SL.mean"), n.iter=500, eps=T, cvg.criteria=0.01,
+                     onestep=TRUE, mediator.method="bayes", np.dnorm=TRUE, superlearner=FALSE, crossfit=FALSE,K=5,
+                     lib = c("SL.glm","SL.earth","SL.ranger","SL.mean"), n.iter=500, eps=TRUE, cvg.criteria=0.01,
                      formulaY="Y ~ .", formulaA="A ~ .", formulaM="M~.", linkY_binary="logit", linkA="logit", linkM_binary="logit",
                      formula_bayes="A ~ .",link_bayes="logit",
-                     truncate_lower=0, truncate_upper=1){
+                     truncate_lower=0.01, truncate_upper=0.99){
 
 
-  attach(data, warn.conflicts=FALSE)
+  # attach(data, warn.conflicts=FALSE)
 
   n <- nrow(data)
 
@@ -124,9 +144,7 @@ TMLE.all <- function(a,data,treatment, mediators, outcome, covariates,
 
     if (length(mediators)>1){ # np method only allow univariate mediator
 
-      print("np method only allow univariate mediator")
-
-      stop()
+      stop("np method only allow univariate mediator")
 
     } else if (is.numeric(unlist(M))) { # univariate continuous mediator
 
@@ -134,9 +152,8 @@ TMLE.all <- function(a,data,treatment, mediators, outcome, covariates,
 
       if (all(Y %in% c(0,1))){ # binary outcome require iterative update among propensity score, mediator density, and outcome regression. Results can be very unstable.
 
-        print("np method under binary outcome is not stable. Try densratio method, bayes method, or dnorm method instead")
+        stop("np method under binary outcome is not stable. Try densratio method, bayes method, or dnorm method instead")
 
-        stop()
 
       }
 
@@ -144,17 +161,15 @@ TMLE.all <- function(a,data,treatment, mediators, outcome, covariates,
 
       if (crossfit==T){
 
-        print("Due to its computational burden. np method is not currently supported for crossfit. Set crossfit=F instead.")
+        stop("Due to its computational burden. np method is not currently supported for crossfit. Set crossfit=F instead.")
 
-        stop()
 
       }
 
       if (superlearner==T){
 
-        print("Due to its computational burden. np method is not currently supported for superlearner. Set superlearner=F instead.")
+        stop("Due to its computational burden. np method is not currently supported for superlearner. Set superlearner=F instead.")
 
-        stop()
 
       }
 
@@ -286,8 +301,23 @@ TMLE.all <- function(a,data,treatment, mediators, outcome, covariates,
 
 
   # apply truncation to propensity score to deal with weak overlap. Truncated propensity score within the user specified range of [truncate_lower, truncate_upper]: default=[0,1]
-  p.a1.X[p.a1.X < truncate_lower] <- truncate_lower
-  p.a1.X[p.a1.X > truncate_upper] <- truncate_upper
+  if (min(p.a1.X) < truncate_lower){
+
+    p.a1.X[p.a1.X < truncate_lower] <- truncate_lower
+
+    print(paste0("Truncation applied to propensity score p(A=1|X) to deal with weak overlap: truncation lower bound is ",truncate_lower))
+
+  }
+
+  if(max(p.a1.X) > truncate_upper){
+
+    p.a1.X[p.a1.X > truncate_upper] <- truncate_upper
+
+    print(paste0("Truncation applied to propensity score p(A=1|X) to deal with weak overlap: truncation upper bound is ",truncate_upper))
+
+  }
+
+
 
 
   p.a.X <- a*p.a1.X + (1-a)*(1-p.a1.X)
@@ -444,9 +474,6 @@ if (mediator.method=="densratio"){ ################### METHOD 2A: densratio meth
       # p(A=1|X,M)
       p.a1.XM <- bayes_fit$SL.predict
 
-      #p(A=a|X,M)
-      p.a.XM <- a*p.a1.XM+(1-a)*(1-p.a1.XM)
-
     }else if (superlearner==T){
 
       bayes_fit <- SuperLearner(Y=A, X=data.frame(M,X), family = binomial(), SL.library = lib)
@@ -454,8 +481,6 @@ if (mediator.method=="densratio"){ ################### METHOD 2A: densratio meth
       # p(A=1|X,M)
       p.a1.XM <- predict(bayes_fit, type = "response")[[1]] %>% as.vector()  # p(A=1|X)
 
-      #p(A=a|X,M)
-      p.a.XM <- a*p.a1.XM+(1-a)*(1-p.a1.XM)
 
     } else {
 
@@ -465,10 +490,27 @@ if (mediator.method=="densratio"){ ################### METHOD 2A: densratio meth
       # p(A=1|X,M)
       p.a1.XM <- predict(bays_fit, type = "response")
 
-      #p(A=a|X,M)
-      p.a.XM <- a*p.a1.XM+(1-a)*(1-p.a1.XM)
+    }
+
+
+    if(min(p.a1.XM)==0){
+
+      p.a1.XM[p.a1.XM<0.01] <- 0.01
+
+      print('Truncation applied: p(A=1|X,M) has 0 values, replaced with 0.01')
 
     }
+
+    if(max(p.a1.XM)==1){
+
+      p.a1.XM[p.a1.XM>0.99] <- 0.99
+
+      print('Truncation applied: p(A=1|X,M) has 1 values, replaced with 0.99')
+
+    }
+
+    #p(A=a|X,M)
+    p.a.XM <- a*p.a1.XM+(1-a)*(1-p.a1.XM)
 
 
     MAXratio <- p.a.XM/(1-p.a.XM)  #p(A=a|X,M)/p(A=a'|X,M)
@@ -565,6 +607,24 @@ if (mediator.method=="densratio"){ ################### METHOD 2A: densratio meth
 
   # updated propensity score
   p.a1.X <- plogis(qlogis(p.a1.X)+eps3*(clever_coef3))
+
+
+  # apply truncation to propensity score to deal with weak overlap. Truncated propensity score within the user specified range of [truncate_lower, truncate_upper]: default=[0,1]
+  if (min(p.a1.X) < truncate_lower){
+
+    p.a1.X[p.a1.X < truncate_lower] <- truncate_lower
+
+    print(paste0("Truncation applied to propensity score p(A=1|X) to deal with weak overlap: truncation lower bound is ",truncate_lower))
+
+  }
+
+  if(max(p.a1.X) > truncate_upper){
+
+    p.a1.X[p.a1.X > truncate_upper] <- truncate_upper
+
+    print(paste0("Truncation applied to propensity score p(A=1|X) to deal with weak overlap: truncation upper bound is ",truncate_upper))
+
+  }
 
   # p(A=a|X)
   p.a.X <- a*p.a1.X+(1-a)*(1-p.a1.X)
