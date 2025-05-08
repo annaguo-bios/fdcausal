@@ -48,12 +48,12 @@ The `TMLE()` function can be called by specifying the treatment assignement(s) `
 
 cYcM <- TMLE(a=c(1,0), data=continuousY_continuousM,
              treatment="A", mediators="M", outcome="Y", covariates="X",
-             onestep=T, linkA="identity") 
+             estimator='onestep', linkA="identity") 
 ```
 
 In the above call to the `TMLE()` function, we have: <br/>
 `a=c(1,0)` specifies estimating ACE, contrasting treatment level $a=1$ versus $a=0$,  <br/>
-`onestep=T` specifies outputing one-step estimator alongside the TMLE estimator, and <br/> 
+`estimator='onestep'` specifies estimation using one-step estimator, and <br/> 
 `linkA` specifies using "identity" link for fitting the logistic regression of A on X.
 
 The `TMLE()` function comes with multiple different arguments that primarily determine the way the nuisance functions are estimated. A brief discussion on nuisance estiamtions is provided in the following section. 
@@ -69,7 +69,7 @@ The front-door ID functional encompasses four nuisance functionals: **the outcom
 ```R  
   bYbM <- TMLE(a=1,data=binaryY_binaryM,
                treatment="A", mediators="M", outcome="Y", covariates="X",
-               onestep=T,
+               estimator='onestep',
                formulaY="Y ~ .", formulaA="A ~ .", formulaM="M~.",
                linkY_binary="logit", linkA="identity", linkM_binary="logit")
 ```
@@ -83,7 +83,7 @@ where `a=1` returns estimation results for $E(Y^1)$.  <br/>
 ```R
 cYcM <- TMLE(a=c(1,0), data=continuousY_continuousM_10dX,
              treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
-             onestep=T, crossfit=T, lib = c("SL.ranger"), K=2)
+             estimator='onestep', crossfit=T, lib = c("SL.ranger"), K=2)
 ```
 
 
@@ -114,7 +114,7 @@ The output of the `TMLE()` function depends on the `mediator.method` used. As an
 # Set a=1 returns estimation results on E(Y)
 cYcM <- TMLE(a=1, data=continuousY_continuousM,
              treatment="A", mediators="M", outcome="Y", covariates="X", 
-             onestep=T, mediator.method="np")
+             estimator=c('onestep','tmle'), mediator.method="np")
 
 ## TMLE output ##
 cYcM$TMLE$estimated_psi # point estimate of the target parameter E(Y^1).

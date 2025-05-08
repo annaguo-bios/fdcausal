@@ -6,7 +6,6 @@
 #' @param mediator Variable name for the continuous univariate mediator
 #' @param outcome Variable name for the continuous univariate outcome
 #' @param covariates Variable name for the measured confounders
-#' @param onestep A logical indicator determines whether one-step estimation is executed. When 'onestep=T', the one-step estimation result is provided. Conversely, if 'onestep=F', the result is withheld.
 #' @param n.iter The maximum number of iterations performed when iteratively updating the mediator density and propensity score.
 #' @param eps A logical indicator determines the stopping criteria used when iteratively updating the mediator density and propensity score. The default is 'eps=T'.
 #' When 'eps=T', \eqn{\sqrt{\epsilon_2^2+\epsilon_3^2}} is used. When 'eps=F', \eqn{max(|\Phi_M|,|\Phi_A|} is used. In general, adoption of 'eps=F' results in better convergence while it takes longer time.
@@ -17,6 +16,7 @@
 #' @param linkA The link function used for the logistic regression of A on X. The default is the 'logit' link.
 #' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.
 #' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 1.
+#' @param estimator A character string indicating which estimator is to be used. The default is c('onestep','tmle'), which returns both one-step estimator and TMLE. Other options are "onestep" and "tmle".
 #' @return Function outputs a list containing TMLE output (and Onestep estimator output if 'onestep=T' is specified):
 #' \describe{
 #'       \item{\code{estimated_psi}}{The estimated parameter of interest: \eqn{E(Y^a)}}
@@ -44,9 +44,10 @@
 #' @export
 
 TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=c("X1","X2","X3"),
-                    onestep=T, n.iter=500, eps=T, cvg.criteria=0.01,
+                    n.iter=500, eps=T, cvg.criteria=0.01,
                     formulaY="Y ~ .", formulaA="A ~ .", linkA="logit",
-                    truncate_lower=0, truncate_upper=1){
+                    truncate_lower=0, truncate_upper=1,
+                    estimator=c('onestep','tmle')){
 
   # attach(data, warn.conflicts=FALSE)
 
@@ -240,7 +241,7 @@ TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=
   theta_x <- sapply(1:n, function(i){integrate(integrand,lower = range(M)[1], upper = range(M)[2], a=a,x=X[i,],f.or=f.or, f.ps=f.ps, f.m=f.m, eps1=0, cumprod.M=cumprod.M, clever_coef3_add=rep(0,n)[i],row.indicator=i,rel.tol = 0.01)$value})
 
   ################## One-step Estimator ##################
-  if (onestep==T){
+  if ('onestep' %in% estimator){
 
     # eta(1,X)-eta(0,X)
     eta_diff <- sapply(1:n, function(i){integrate(integrand.eta.diff,lower = range(M)[1], upper = range(M)[2], a=a,x=X[i,],cumprod.M=cumprod.M, row.indicator=i)$value})
@@ -291,158 +292,166 @@ TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=
 
   }
 
-  ################## TMLE Estimator ##################
-  while ((eps && sqrt(eps2^2+eps3^2)> cvg.criteria) || (!eps && max(abs(EDstar_M),abs(EDstar_ps)) > cvg.criteria)  && iter<n.iter) {
+  if('tmle' %in% estimator){
+    ################## TMLE Estimator ##################
+    while ((eps && sqrt(eps2^2+eps3^2)> cvg.criteria) || (!eps && max(abs(EDstar_M),abs(EDstar_ps)) > cvg.criteria)  && iter<n.iter) {
 
-    ######################
-    # update p(M|A=a,X)
-    #####################
+      ######################
+      # update p(M|A=a,X)
+      #####################
 
-    # the gradient of p(M|A=a,X)
-    D_M <- (xi-theta_x)/p.a.X
+      # the gradient of p(M|A=a,X)
+      D_M <- (xi-theta_x)/p.a.X
 
-    # loss function for p(M|A=a,X) is -I(A=a)*[log(p(M|A=a,X))+log{1+eps_f/g_a(X)*(xi(M,X)-theta(X))}]
-    # minimize the loss is the same as minimize -I(A=a)*log{1+eps_f/g_a(X)*(xi(M,X)-theta(X))}
-    loss_M <- function (eps2) {
-      return(-1*mean((A==a)*log((1+eps2*D_M))))
+      # loss function for p(M|A=a,X) is -I(A=a)*[log(p(M|A=a,X))+log{1+eps_f/g_a(X)*(xi(M,X)-theta(X))}]
+      # minimize the loss is the same as minimize -I(A=a)*log{1+eps_f/g_a(X)*(xi(M,X)-theta(X))}
+      loss_M <- function (eps2) {
+        return(-1*mean((A==a)*log((1+eps2*D_M))))
+      }
+
+      range_eps2 <- function(eps2){
+        range_eps2 <- c(max(max(-1/D_M[D_M>0]),-1e-5),min(min(-1/D_M[D_M<0]),1e-5))
+      }
+
+
+      # find the optimal eps2 that minimize the loss function
+      eps2 <- optimize(loss_M, range_eps2(D_M), tol=0.0001, maximum=F)$minimum # the domain of eps2 is not R
+
+      # f.m is updated via updating eps2_vec: f.m=f.m^0 * \prod [1+eps*(xi-theta_x)]
+      eps2_vec <- c(eps2_vec,eps2)
+
+      # update matrix that store p(A=1|X) and theta_x over iterations
+      p.a1.X.mat <- cbind(p.a1.X.mat,p.a1.X)
+      theta_x.mat <- cbind(theta_x.mat,theta_x)
+
+      ######################
+      # update p(A=1|X)
+      ######################
+
+      # clever coefficient for propensity score: eta(1,X)-eta(0,X)
+      clever_coef3=sapply(1:n, function(i){integrate(integrand.eta.diff,lower = range(M)[1], upper = range(M)[2], a=a,x=X[i,],cumprod.M=cumprod.M,row.indicator=i,rel.tol = 0.01)$value})
+
+      # offset term for the propensity score
+      offset_ps <- qlogis(p.a1.X)
+
+      # derive eps3
+      ps_model <- glm(
+        A ~ offset(offset_ps)+clever_coef3-1, family=binomial(), start=0
+      )
+
+      eps3 <- coef(ps_model)
+      eps3_vec <- c(eps3_vec,eps3)
+
+      # update cumulative summation of eps3*clever coefficient
+      clever_coef3_add = clever_coef3_add + eps3*(clever_coef3)
+
+      # updated propensity score
+      p.a1.X <- plogis(qlogis(p.a1.X)+eps3*(clever_coef3))
+
+      # p(A=a|X)
+      p.a.X <- a*p.a1.X+(1-a)*(1-p.a1.X)
+
+
+      # update theta_x
+      theta_x <- sapply(1:n, function(i){integrate(integrand,lower = range(M)[1], upper = range(M)[2], a=a,x=X[i,],f.or=f.or, f.ps=f.ps, f.m=f.m, eps1=0, cumprod.M=cumprod.M, clever_coef3_add[i],row.indicator=i,rel.tol = 0.01)$value})
+
+      # update xi
+      xi <- or_pred_a1*p.a1.X+or_pred_a0*(1-p.a1.X)
+
+      # E(Dstar) for M|A,X: I(A=a)/p(A=a|X)*[xi-(theta_x+eps2*xi)]
+      EDstar_M <- mean((A==a)/p.a.X*(xi-theta_x))
+      EDstar_M.vec <- c(EDstar_M.vec,EDstar_M)
+
+
+      # E(Dstar)-iteration1
+      EDstar_ps <- mean(clever_coef3*(A-p.a1.X))
+      EDstar_ps.vec <- c(EDstar_ps.vec,EDstar_ps)
+
+      iter <- iter+1
+      print(paste0("Iteration: ",iter))
     }
 
-    range_eps2 <- function(eps2){
-      range_eps2 <- c(max(max(-1/D_M[D_M>0]),-1e-5),min(min(-1/D_M[D_M<0]),1e-5))
-    }
-
-
-    # find the optimal eps2 that minimize the loss function
-    eps2 <- optimize(loss_M, range_eps2(D_M), tol=0.0001, maximum=F)$minimum # the domain of eps2 is not R
-
-    # f.m is updated via updating eps2_vec: f.m=f.m^0 * \prod [1+eps*(xi-theta_x)]
-    eps2_vec <- c(eps2_vec,eps2)
-
-    # update matrix that store p(A=1|X) and theta_x over iterations
-    p.a1.X.mat <- cbind(p.a1.X.mat,p.a1.X)
-    theta_x.mat <- cbind(theta_x.mat,theta_x)
-
     ######################
-    # update p(A=1|X)
+    # update E[Y|A,M,X]
     ######################
+    # or_weight <- p.M.aX/p.M.AX
 
-    # clever coefficient for propensity score: eta(1,X)-eta(0,X)
-    clever_coef3=sapply(1:n, function(i){integrate(integrand.eta.diff,lower = range(M)[1], upper = range(M)[2], a=a,x=X[i,],cumprod.M=cumprod.M,row.indicator=i,rel.tol = 0.01)$value})
+    p.M.aX_updated <- sapply(1:n, function(i){f.m(M=M[i],A=a,X[i,],cumprod.M,row.indicator=i)})
 
-    # offset term for the propensity score
-    offset_ps <- qlogis(p.a1.X)
+    or_weight <- p.M.aX_updated/((A==a)*p.M.aX_updated+(1-(A==a))*p.M.AX)
 
-    # derive eps3
-    ps_model <- glm(
-      A ~ offset(offset_ps)+clever_coef3-1, family=binomial(), start=0
+    # one iteration
+    or_model <- glm(
+      Y ~ offset(or_pred)+1, weights = or_weight
     )
 
-    eps3 <- coef(ps_model)
-    eps3_vec <- c(eps3_vec,eps3)
+    eps1 = coef(or_model)
 
-    # update cumulative summation of eps3*clever coefficient
-    clever_coef3_add = clever_coef3_add + eps3*(clever_coef3)
+    # updated outcome regression
+    or_pred = or_pred + eps1
 
-    # updated propensity score
-    p.a1.X <- plogis(qlogis(p.a1.X)+eps3*(clever_coef3))
+    ######################
+    # E[Dstar] calculations
+    ######################
 
-    # p(A=a|X)
-    p.a.X <- a*p.a1.X+(1-a)*(1-p.a1.X)
+    # E(Dstar) for E(Y|M,A,X)
+    EDstar_or <- mean(or_weight*(Y-or_pred))
 
-
-    # update theta_x
-    theta_x <- sapply(1:n, function(i){integrate(integrand,lower = range(M)[1], upper = range(M)[2], a=a,x=X[i,],f.or=f.or, f.ps=f.ps, f.m=f.m, eps1=0, cumprod.M=cumprod.M, clever_coef3_add[i],row.indicator=i,rel.tol = 0.01)$value})
-
-    # update xi
-    xi <- or_pred_a1*p.a1.X+or_pred_a0*(1-p.a1.X)
-
-    # E(Dstar) for M|A,X: I(A=a)/p(A=a|X)*[xi-(theta_x+eps2*xi)]
+    #E(Dstar) for M=1|A,X
     EDstar_M <- mean((A==a)/p.a.X*(xi-theta_x))
-    EDstar_M.vec <- c(EDstar_M.vec,EDstar_M)
 
-
-    # E(Dstar)-iteration1
+    # E(Dstar) for A=a|X
     EDstar_ps <- mean(clever_coef3*(A-p.a1.X))
-    EDstar_ps.vec <- c(EDstar_ps.vec,EDstar_ps)
 
-    iter <- iter+1
-    print(paste0("Iteration: ",iter))
+
+    ######################
+    # estimate E[Y(a)]
+    ######################
+
+    # update theta_x upon updating E(Y|M,A,X): theta(X) = int E(Y|M,A,X)p(M|A=a,X)p(A|X)dM dA
+    theta_x <- theta_x+eps1
+
+    # update xi upon updating E(Y|M,A,X): xi(M,X) = int E(Y|M,A,X)p(A|X) dA
+    xi <- xi+eps1
+
+    # estimated psi
+    estimated_psi = mean(theta_x)
+
+    # EIF
+    EIF <- or_weight*(Y-or_pred)+ #line 1 of the EIF equation
+      {I(A==a)/p.a.X}*(xi-theta_x)+ #line 2 of the EIF equation
+      clever_coef3*(A-p.a1.X)+ #line 3 of the EIF equation
+      theta_x - estimated_psi #line 4 of the EIF equation
+
+    # confidence interval
+    lower.ci <- estimated_psi-1.96*sqrt(mean(EIF^2)/nrow(data))
+    upper.ci <- estimated_psi+1.96*sqrt(mean(EIF^2)/nrow(data))
+
+    tmle.out <- list(estimated_psi=estimated_psi, # estimated parameter
+                     lower.ci=lower.ci, # lower bound of 95% CI
+                     upper.ci=upper.ci, # upper bound of 95% CI
+                     p.M.aX=p.M.aX,  # estimated M|A=a,X
+                     p.M.AX=p.M.AX, # estimated M|A,X
+                     p.a1.X_updated=p.a1.X,  # estimated A=1|X
+                     or_pred_updated=or_pred, # estimated E(Y|M,A,X)
+                     EIF=EIF, # EIF
+                     #
+                     EDstar=c(EDstar_or,EDstar_M, EDstar_ps), # E(Dstar) for Y|M,A,X and M|A,X, and A|X
+                     EDstar_M.vec=EDstar_M.vec, # E(Dstar) for M|A,X over iterations
+                     EDstar_ps.vec=EDstar_ps.vec, # E(Dstar) for A|X over iterations
+                     #
+                     eps2_vec=eps2_vec, # vector of eps2 over iterations
+                     eps3_vec=eps3_vec, # vector of eps3 over iterations
+                     iter=iter) # number of iterations for M|A,X and A|X to converge
   }
 
-  ######################
-  # update E[Y|A,M,X]
-  ######################
-  # or_weight <- p.M.aX/p.M.AX
-
-  p.M.aX_updated <- sapply(1:n, function(i){f.m(M=M[i],A=a,X[i,],cumprod.M,row.indicator=i)})
-
-  or_weight <- p.M.aX_updated/((A==a)*p.M.aX_updated+(1-(A==a))*p.M.AX)
-
-  # one iteration
-  or_model <- glm(
-    Y ~ offset(or_pred)+1, weights = or_weight
-  )
-
-  eps1 = coef(or_model)
-
-  # updated outcome regression
-  or_pred = or_pred + eps1
-
-  ######################
-  # E[Dstar] calculations
-  ######################
-
-  # E(Dstar) for E(Y|M,A,X)
-  EDstar_or <- mean(or_weight*(Y-or_pred))
-
-  #E(Dstar) for M=1|A,X
-  EDstar_M <- mean((A==a)/p.a.X*(xi-theta_x))
-
-  # E(Dstar) for A=a|X
-  EDstar_ps <- mean(clever_coef3*(A-p.a1.X))
+  if(length(estimator)==2){
+    return(list(TMLE=tmle.out,Onestep=onestep.out))
+  }else{
+    if ('onestep'==estimator){return(list(Onestep=onestep.out))}
+    else if ('tmle'==estimator){return(TMLE=tmle.out)}
+  }
 
 
-  ######################
-  # estimate E[Y(a)]
-  ######################
-
-  # update theta_x upon updating E(Y|M,A,X): theta(X) = int E(Y|M,A,X)p(M|A=a,X)p(A|X)dM dA
-  theta_x <- theta_x+eps1
-
-  # update xi upon updating E(Y|M,A,X): xi(M,X) = int E(Y|M,A,X)p(A|X) dA
-  xi <- xi+eps1
-
-  # estimated psi
-  estimated_psi = mean(theta_x)
-
-  # EIF
-  EIF <- or_weight*(Y-or_pred)+ #line 1 of the EIF equation
-    {I(A==a)/p.a.X}*(xi-theta_x)+ #line 2 of the EIF equation
-    clever_coef3*(A-p.a1.X)+ #line 3 of the EIF equation
-    theta_x - estimated_psi #line 4 of the EIF equation
-
-  # confidence interval
-  lower.ci <- estimated_psi-1.96*sqrt(mean(EIF^2)/nrow(data))
-  upper.ci <- estimated_psi+1.96*sqrt(mean(EIF^2)/nrow(data))
-
-  tmle.out <- list(estimated_psi=estimated_psi, # estimated parameter
-                   lower.ci=lower.ci, # lower bound of 95% CI
-                   upper.ci=upper.ci, # upper bound of 95% CI
-                   p.M.aX=p.M.aX,  # estimated M|A=a,X
-                   p.M.AX=p.M.AX, # estimated M|A,X
-                   p.a1.X_updated=p.a1.X,  # estimated A=1|X
-                   or_pred_updated=or_pred, # estimated E(Y|M,A,X)
-                   EIF=EIF, # EIF
-                   #
-                   EDstar=c(EDstar_or,EDstar_M, EDstar_ps), # E(Dstar) for Y|M,A,X and M|A,X, and A|X
-                   EDstar_M.vec=EDstar_M.vec, # E(Dstar) for M|A,X over iterations
-                   EDstar_ps.vec=EDstar_ps.vec, # E(Dstar) for A|X over iterations
-                   #
-                   eps2_vec=eps2_vec, # vector of eps2 over iterations
-                   eps3_vec=eps3_vec, # vector of eps3 over iterations
-                   iter=iter) # number of iterations for M|A,X and A|X to converge
-
-  if (onestep==T){return(list(TMLE=tmle.out,Onestep=onestep.out))}
-  else if (onestep==F){return(TMLE=tmle.out)}
 
 }

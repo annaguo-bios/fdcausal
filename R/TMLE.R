@@ -44,8 +44,8 @@ NULL
 #' @param linkM_binary The link function used for the logistic regression of M on A and X. The default is the 'logit' link. This parameter is only needed when M is a univariate binary mediator.
 #' @param formula_bayes Regression formula for the regression of A on M and X. The default is 'A ~ 1 + M + X'. This parameter is only needed when mediator.method="bayes".
 #' @param link_bayes The link function used for the logistic regression of A on M and X. The default is 'logit' link. This parameter is only needed when mediator.method="bayes".
-#' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.
-#' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 1.
+#' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.01.
+#' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 0.99.
 #' @param np.dnorm A logic variable. If np.dnorm=T, p(M|A,X) is directly estimated assuming normal distribution. If np.dnorm=F, p(M|A,X) is directly estimated using the \link[np]{npcdens} function.
 #' @param ATT A logic variable. If ATT=T, the function estimates the Average Treatment Effect on the Treated (ATT). If ATT=F, the function estimates the Average Treatment Effect (ATE). ATT=F by default.
 #' @return Function outputs a list containing TMLE results (and Onestep results if 'onestep=T' is specified). When 'a=c(1,0)', function also outputs corresponding results on \eqn{E(Y^1)} and \eqn{E(Y^1)}:
@@ -72,21 +72,21 @@ NULL
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=binaryY_binaryM,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
-#'  onestep=TRUE, linkA="identity",ATT=TRUE)
+#'   linkA="identity",ATT=TRUE)
 #'
 #' # ATE estimation. For binary outcome Y and binary mediator M.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=binaryY_binaryM,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
-#'  onestep=TRUE, linkA="identity")
+#'   linkA="identity")
 #'
 #' # ATE estimation. For continuous outcome Y and binary mediator M
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=continuousY_binaryM,
 #' treatment="A", mediators="M", outcome="Y",
-#' covariates="X", onestep=TRUE, linkA="identity")
+#' covariates="X",  linkA="identity")
 #'
 #' # ATE estimation. For continuous outcome Y and binary mediator M.
 #' # Data is generated under p(A=1|X) = 0.001 + 0.998X. And X~Uniform(0,1).
@@ -94,7 +94,7 @@ NULL
 #' # Below we apply truncation to the propensity score to truncate it between (0.001, 0.999).
 #' res <- TMLE(a=c(1,0),data=continuousY_binaryM_weakoverlap,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
-#' onestep=TRUE, linkA="identity", truncate_lower=0.001, truncate_upper=0.999)
+#'  linkA="identity", truncate_lower=0.001, truncate_upper=0.999)
 #'
 #' # ATE estimation. For continuous outcome Y and univariate continuous mediator M.
 #' # Using 'np' method for mediator density estimation.
@@ -103,7 +103,7 @@ NULL
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=continuousY_continuousM,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
-#' onestep=TRUE, linkA="identity", mediator.method="np", np.dnorm=FALSE)
+#'  linkA="identity", mediator.method="np", np.dnorm=FALSE)
 #'
 #' # ATE estimation. For continuous outcome Y and univariate continuous mediator M.
 #' # Using 'np' method for mediator density estimation.
@@ -112,7 +112,7 @@ NULL
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=continuousY_continuousM,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
-#' onestep=TRUE, linkA="identity", mediator.method="np", np.dnorm=TRUE)
+#'  linkA="identity", mediator.method="np", np.dnorm=TRUE)
 #'
 #' # ATE estimation. For continuous outcome Y and univariate continuous mediator M.
 #' # Using 'densratio' method for mediator density ratio estimation.
@@ -121,7 +121,7 @@ NULL
 #' # Below we apply truncation to the propensity score to truncate it between (0.001, 0.999).
 #' res <-TMLE(a=c(1,0),data=continuousY_continuousM_weakoverlap,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
-#' onestep=TRUE, linkA="identity", mediator.method="densratio",
+#'  linkA="identity", mediator.method="densratio",
 #' truncate_lower=0.001, truncate_upper=0.999)
 #'
 #' # ATE estimation. For continuous outcome Y and bivariate mediator M.
@@ -130,7 +130,7 @@ NULL
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=continuousY_bivariateM,
 #' treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
-#'  onestep=TRUE, linkA="identity", mediator.method="densratio")
+#'   linkA="identity", mediator.method="densratio")
 #'
 #' # ATE estimation. For continuous outcome Y and bivariate mediator M.
 #' # Using 'bayes' method for mediator density ratio estimation.
@@ -138,7 +138,7 @@ NULL
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=continuousY_bivariateM,
 #' treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
-#'  onestep=TRUE, linkA="identity", mediator.method="bayes")
+#'   linkA="identity", mediator.method="bayes")
 #'
 #' # ATE estimation. For continuous outcome Y and bivariate mediator M.
 #' # Using 'dnorm' method for mediator density ratio estimation.
@@ -146,7 +146,7 @@ NULL
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=continuousY_bivariateM,treatment="A",
 #' mediators=c("M.1","M.2"), outcome="Y", covariates="X",
-#' onestep=TRUE, linkA="identity", mediator.method="dnorm")
+#'  linkA="identity", mediator.method="dnorm")
 #'
 #' # ATE estimation. For continuous outcome Y and quadrivariate mediator M.
 #' # Using 'densratio' method for mediator density ratio estimation.
@@ -154,7 +154,7 @@ NULL
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=continuousY_quadrivariateM,treatment="A",
 #' mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X",
-#' onestep=TRUE, linkA="identity", mediator.method="densratio")
+#'  linkA="identity", mediator.method="densratio")
 #'
 #' # ATE estimation. For continuous outcome Y and quadrivariate mediator M.
 #' # Using 'bayes' method for mediator density ratio estimation.
@@ -162,7 +162,7 @@ NULL
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=continuousY_quadrivariateM,
 #' treatment="A", mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X",
-#'  onestep=TRUE, linkA="identity", mediator.method="bayes")
+#'   linkA="identity", mediator.method="bayes")
 #'
 #' # ATE estimation. For continuous outcome Y and quadrivariate mediator M.
 #' # Using 'dnorm' method for mediator density ratio estimation.
@@ -170,7 +170,7 @@ NULL
 #' # Therefore, setting link for propensity score to be "identity".
 #' res <-TMLE(a=c(1,0),data=continuousY_quadrivariateM,
 #' treatment="A", mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X",
-#'  onestep=TRUE, linkA="identity", mediator.method="dnorm")
+#'   linkA="identity", mediator.method="dnorm")
 #' }
 #'
 #' @import np densratio SuperLearner mvtnorm stats
@@ -180,11 +180,11 @@ NULL
 #'
 #'
 TMLE <- function(a,data,treatment, mediators, outcome, covariates,
-                 onestep=T, mediator.method="bayes", np.dnorm=T, superlearner=F,crossfit=F,K=5,
+                 mediator.method="bayes", np.dnorm=T, superlearner=F,crossfit=F,K=5,
                  lib = c("SL.glm","SL.earth","SL.ranger","SL.mean"), n.iter=500, eps=T, cvg.criteria=0.01,
                  formulaY="Y ~ .", formulaA="A ~ .", formulaM="M~.", linkY_binary="logit", linkA="logit", linkM_binary="logit",
                  formula_bayes="A ~ .",link_bayes="logit",
-                 truncate_lower=0, truncate_upper=1, ATT = F){
+                 truncate_lower=0.01, truncate_upper=0.99, ATT = F, estimator='onestep',boundedsubmodelY=F){
 
   # sample size
 
@@ -200,11 +200,11 @@ TMLE <- function(a,data,treatment, mediators, outcome, covariates,
 
       ## E[Y(a2)| a1]
       out.a0 <- ATT.TMLE.all(a=a[2],data=data,treatment=treatment, mediators=mediators, outcome=outcome, covariates=covariates,
-                         onestep=onestep, mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
+                         mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
                          lib = lib, n.iter=n.iter, eps=eps, cvg.criteria=cvg.criteria,
                          formulaY=formulaY, formulaA=formulaA, formulaM=formulaM, linkY_binary=linkY_binary, linkA=linkA, linkM_binary=linkM_binary,
                          formula_bayes=formula_bayes,link_bayes=link_bayes,
-                         truncate_lower=truncate_lower, truncate_upper=truncate_upper)
+                         truncate_lower=truncate_lower, truncate_upper=truncate_upper,estimator=estimator,boundedsubmodelY=boundedsubmodelY)
 
       ## ATT = E[Y(a1)| a1] - E[Y(a2)| a1]
       Y <- data[,outcome]
@@ -213,7 +213,7 @@ TMLE <- function(a,data,treatment, mediators, outcome, covariates,
       TMLE <- list(estimated_psi = mean(Y[A==a[1]]), EIF = (A==a[1])/mean(A==a[1])*(Y - mean(Y[A==a[1]])))
       Onestep <- list(estimated_psi = mean(Y[A==a[1]]), EIF = (A==a[1])/mean(A==a[1])*(Y - mean(Y[A==a[1]])))
 
-      out.a1 <- list(TMLE, Onestep)
+      out.a1 <- list(TMLE=TMLE, Onestep=Onestep)
 
     }else{ ## ATE estimation --
 
@@ -221,43 +221,56 @@ TMLE <- function(a,data,treatment, mediators, outcome, covariates,
       ## TMLE estimator
 
       out.a1 <- TMLE.all(a=a[1],data=data,treatment=treatment, mediators=mediators, outcome=outcome, covariates=covariates,
-                         onestep=onestep, mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
+                         mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
                          lib = lib, n.iter=n.iter, eps=eps, cvg.criteria=cvg.criteria,
                          formulaY=formulaY, formulaA=formulaA, formulaM=formulaM, linkY_binary=linkY_binary, linkA=linkA, linkM_binary=linkM_binary,
                          formula_bayes=formula_bayes,link_bayes=link_bayes,
-                         truncate_lower=truncate_lower, truncate_upper=truncate_upper)
+                         truncate_lower=truncate_lower, truncate_upper=truncate_upper,estimator=estimator,boundedsubmodelY=boundedsubmodelY)
 
       out.a0 <- TMLE.all(a=a[2],data=data,treatment=treatment, mediators=mediators, outcome=outcome, covariates=covariates,
-                         onestep=onestep, mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
+                         mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
                          lib = lib, n.iter=n.iter, eps=eps, cvg.criteria=cvg.criteria,
                          formulaY=formulaY, formulaA=formulaA, formulaM=formulaM, linkY_binary=linkY_binary, linkA=linkA, linkM_binary=linkM_binary,
                          formula_bayes=formula_bayes,link_bayes=link_bayes,
-                         truncate_lower=truncate_lower, truncate_upper=truncate_upper)
+                         truncate_lower=truncate_lower, truncate_upper=truncate_upper,estimator=estimator,boundedsubmodelY=boundedsubmodelY)
 
     } ## end of if-else for ATE/ATT
 
-    # run TMLE
-    tmle_output_Y1 <- out.a1$TMLE
-    tmle_output_Y0 <- out.a0$TMLE
+    estimand <- ifelse(ATT, 'ATT','ATE')
 
-    # estimate E[Y(1)], E[Y(0)], and ATE
-    hat_E.Y1 = tmle_output_Y1$estimated_psi
-    hat_E.Y0 = tmle_output_Y0$estimated_psi
-    hat_ATE = hat_E.Y1 - hat_E.Y0
+    if('tmle' %in% estimator){
 
-    # lower CI
-    lower.ci_ATE = hat_ATE - 1.96*sqrt(mean((tmle_output_Y1$EIF-tmle_output_Y0$EIF)^2)/n)
+      # run TMLE
+      tmle_output_Y1 <- out.a1$TMLE
+      tmle_output_Y0 <- out.a0$TMLE
 
-    # upper CI
-    upper.ci_ATE = hat_ATE + 1.96*sqrt(mean((tmle_output_Y1$EIF-tmle_output_Y0$EIF)^2)/n)
+      # estimate E[Y(1)], E[Y(0)], and ATE
+      hat_E.Y1 = tmle_output_Y1$estimated_psi
+      hat_E.Y0 = tmle_output_Y0$estimated_psi
+      hat_ATE = hat_E.Y1 - hat_E.Y0
 
-    tmle.out <- list(ATE=hat_ATE, # estimated parameter
-                     lower.ci=lower.ci_ATE, # lower bound of 95% CI
-                     upper.ci=upper.ci_ATE, # upper bound of 95% CI
-                     EIF=tmle_output_Y1$EIF-tmle_output_Y0$EIF # EIF
-    )
+      # lower CI
+      lower.ci_ATE = hat_ATE - 1.96*sqrt(mean((tmle_output_Y1$EIF-tmle_output_Y0$EIF)^2)/n)
 
-    if (onestep==T){
+      # upper CI
+      upper.ci_ATE = hat_ATE + 1.96*sqrt(mean((tmle_output_Y1$EIF-tmle_output_Y0$EIF)^2)/n)
+
+      tmle.out <- list(
+                       lower.ci=lower.ci_ATE, # lower bound of 95% CI
+                       upper.ci=upper.ci_ATE, # upper bound of 95% CI
+                       EIF=tmle_output_Y1$EIF-tmle_output_Y0$EIF # EIF
+      )
+
+      tmle.out[[estimand]] <- hat_ATE # ATE estimate
+
+      cat(paste0("TMLE estimated ", estimand ," : ",round(tmle.out[[estimand]],2),"; 95% CI: (",round(tmle.out$lower.ci,2),", ",round(tmle.out$upper.ci,2),")"))
+
+      if(length(estimator)==1){return(list(TMLE=tmle.out,TMLE.Y1=tmle_output_Y1, TMLE.Y0 = tmle_output_Y0))}
+
+    }
+
+
+    if ('onestep' %in% estimator){
 
       # run TMLE
       onestep_output_Y1 <- out.a1$Onestep
@@ -274,20 +287,20 @@ TMLE <- function(a,data,treatment, mediators, outcome, covariates,
       # upper CI
       upper.ci_ATE = hat_ATE + 1.96*sqrt(mean((onestep_output_Y1$EIF-onestep_output_Y0$EIF)^2)/n)
 
-      onestep.out <- list(ATE=hat_ATE, # estimated parameter
+      onestep.out <- list(
                           lower.ci=lower.ci_ATE, # lower bound of 95% CI
                           upper.ci=upper.ci_ATE, # upper bound of 95% CI
                           EIF=onestep_output_Y1$EIF-onestep_output_Y0$EIF # EIF
       )
 
-      estimand <- ifelse(ATT, 'ATT','ACE')
-      cat(paste0("TMLE estimated ", estimand ," : ",round(tmle.out$ATE,2),"; 95% CI: (",round(tmle.out$lower.ci,2),", ",round(tmle.out$upper.ci,2),") \n","Onestep estimated ", estimand ," : ",round(onestep.out$ATE,2),"; 95% CI: (",round(onestep.out$lower.ci,2),", ",round(onestep.out$upper.ci,2),")"))
+      onestep.out[[estimand]] <- hat_ATE # ATE estimate
 
-      return(list(TMLE=tmle.out,Onestep=onestep.out, TMLE.Y1=tmle_output_Y1, TMLE.Y0 = tmle_output_Y0, Onestep.Y1=onestep_output_Y1, Onestep.Y0=onestep_output_Y0))}else {
+      cat(paste0("Onestep estimated ", estimand ," : ",round(onestep.out[[estimand]],2),"; 95% CI: (",round(onestep.out$lower.ci,2),", ",round(onestep.out$upper.ci,2),")"))
 
-        cat(paste0("TMLE estimated ", estimand ," : ",round(tmle.out$ATE,2),"; 95% CI: (",round(tmle.out$lower.ci,2),", ",round(tmle.out$upper.ci,2),")"))
+      if(length(estimator)==1){return(list(Onestep=onestep.out,Onestep.Y1=onestep_output_Y1, Onestep.Y0 = onestep_output_Y0))}
+    }
 
-        return(list(TMLE=tmle.out,TMLE.Y1=tmle_output_Y1, TMLE.Y0 = tmle_output_Y0))}
+  if(length(estimator)==2){return(list(TMLE=tmle.out,Onestep=onestep.out, TMLE.Y1=tmle_output_Y1, TMLE.Y0 = tmle_output_Y0, Onestep.Y1=onestep_output_Y1, Onestep.Y0=onestep_output_Y0))}
 
 
   }else if (length(a)==1) { ## E(Y^1) estimate ==
@@ -295,21 +308,21 @@ TMLE <- function(a,data,treatment, mediators, outcome, covariates,
     if(ATT){ # ATT estimation --
 
       out.a <- ATT.TMLE.all(a=a,data=data,treatment=treatment, mediators=mediators, outcome=outcome, covariates=covariates,
-                        onestep=onestep, mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
+                        mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
                         lib = lib, n.iter=n.iter, eps=eps, cvg.criteria=cvg.criteria,
                         formulaY=formulaY, formulaA=formulaA, formulaM=formulaM, linkY_binary=linkY_binary, linkA=linkA, linkM_binary=linkM_binary,
                         formula_bayes=formula_bayes,link_bayes=link_bayes,
-                        truncate_lower=truncate_lower, truncate_upper=truncate_upper)
+                        truncate_lower=truncate_lower, truncate_upper=truncate_upper,estimator=estimator,boundedsubmodelY=boundedsubmodelY)
 
     }else{ # ATE estimation --
 
 
       out.a <- TMLE.all(a=a,data=data,treatment=treatment, mediators=mediators, outcome=outcome, covariates=covariates,
-                        onestep=onestep, mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
+                        mediator.method=mediator.method, superlearner=superlearner,crossfit=crossfit,K=K,
                         lib = lib, n.iter=n.iter, eps=eps, cvg.criteria=cvg.criteria,
                         formulaY=formulaY, formulaA=formulaA, formulaM=formulaM, linkY_binary=linkY_binary, linkA=linkA, linkM_binary=linkM_binary,
                         formula_bayes=formula_bayes,link_bayes=link_bayes,
-                        truncate_lower=truncate_lower, truncate_upper=truncate_upper)
+                        truncate_lower=truncate_lower, truncate_upper=truncate_upper,estimator=estimator,boundedsubmodelY=boundedsubmodelY)
 
 
     }
@@ -319,5 +332,6 @@ TMLE <- function(a,data,treatment, mediators, outcome, covariates,
   } ## end of if-else for input a length
 
 }
+
 
 

@@ -17,6 +17,7 @@
 #' @param linkA The link function used for the logistic regression of A on X. The default is the 'logit' link.
 #' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.
 #' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 1.
+#' @param estimator A character string indicating which estimator is to be used. The default is c('onestep','tmle'), which returns both one-step estimator and TMLE. Other options are "onestep" and "tmle".
 #' @return Function outputs a list containing TMLE output (and Onestep estimator output if 'onestep=T' is specified):
 #' \describe{
 #'       \item{\code{estimated_psi}}{The estimated parameter of interest: \eqn{E(Y^a)}}
@@ -43,9 +44,9 @@
 #' @export
 
 ATT.TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=c("X1","X2","X3"),
-                    onestep=T, n.iter=500, eps=T, cvg.criteria=0.01,
+                    n.iter=500, eps=T, cvg.criteria=0.01,
                     formulaY="Y ~ .", formulaA="A ~ .", linkA="logit",
-                    truncate_lower=0, truncate_upper=1){
+                    truncate_lower=0, truncate_upper=1, estimator='onestep'){
 
   # attach(data, warn.conflicts=FALSE)
 
@@ -155,7 +156,7 @@ ATT.TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covaria
   kappa <- sapply(1:n, function(i){integrate(integrand,lower = range(M)[1], upper = range(M)[2], a=a,x=X[i,], eps.Y=0, eps.M=0, clever_coef.M=0, rel.tol = 0.01)$value})
 
   ################## One-step Estimator ##################
-  if (onestep==T){
+  if ('onestep' %in% estimator){
 
     # E(Dstar) for Y|M,A,X
     or_weight <- (A==alt)*{1/p.alt}*p.M.aX*{1/p.M.altX} # I(A=a')/p(a') * p(M=1|A=a,X)/p(M=1|A=a',X)
@@ -198,86 +199,94 @@ ATT.TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covaria
 
   }
 
-  ################## TMLE Estimator ##################
+  if('tmle' %in% estimator){
+    ################## TMLE Estimator ##################
 
-  ######################
-  # update p(M|A=a,X)
-  #####################
+    ######################
+    # update p(M|A=a,X)
+    #####################
 
-  # the gradient of p(M|A=a,X)
-  D_M <- {1/p.alt}*ratio.A.X*(or_pred_alt - kappa)
+    # the gradient of p(M|A=a,X)
+    D_M <- {1/p.alt}*ratio.A.X*(or_pred_alt - kappa)
 
-  # loss function for p(M|A=a,X) is -I(A=a)*[log(p(M|A=a,X))+log{1+eps_f*D_M]
-  # minimize the loss is the same as minimize -I(A=a)*log{1+eps_f*D_M}
-  loss_M <- function (eps.M) {
-    return(-1*mean((A==a)*log((1+eps.M*D_M))))
+    # loss function for p(M|A=a,X) is -I(A=a)*[log(p(M|A=a,X))+log{1+eps_f*D_M]
+    # minimize the loss is the same as minimize -I(A=a)*log{1+eps_f*D_M}
+    loss_M <- function (eps.M) {
+      return(-1*mean((A==a)*log((1+eps.M*D_M))))
+    }
+
+    # range of eps.M that make the density positive
+    range_eps.M <- function(eps.M){ range_eps.M <- c(max(max(-1/D_M[D_M>0]),-1e-5),min(min(-1/D_M[D_M<0]),1e-5))}
+
+
+    # find the optimal eps2 that minimize the loss function
+    eps.M <- optimize(loss_M, range_eps.M(D_M), tol=0.0001, maximum=F)$minimum # the domain of eps2 is not R
+
+    # update p(M|A=a,X)
+    p.M.aX_updated <- p.M.aX*(1+eps.M*D_M)
+
+
+
+    ######################
+    # Update E(Y|M,alt,X)
+    ######################
+
+    ## clever coefficient for E(Y|M,alt,X)
+    clever_coef.Y <- {1/p.alt}*p.M.aX_updated*{1/p.M.altX} # used for fitting the target regression, and updating E(Y|M,a',X)
+    or_weight <- (A==alt)*clever_coef.Y  # used if calculating EIF
+
+    # offset term for E(Y|M,alt,X)
+    offset.Y <- or_pred_alt
+
+    model.Y <- glm( Y ~ offset(offset.Y)+1, weights=or_weight)
+
+    eps.Y = coef(model.Y)
+
+    # update E(Y|M,alt,X)
+    or_pred_alt_updated <- or_pred_alt + eps.Y
+
+    # calculated E(Dstar) for Y|M,alt,X
+    EDstar_or <- mean(or_weight*(Y-or_pred_alt_updated)) # weight*(Y - E(Y|M,a',X))
+
+    # estimated psi
+    ax_weight <- (A==alt)*{1/p.alt}
+    kappa <- sapply(1:n, function(i){integrate(integrand,lower = range(M)[1], upper = range(M)[2], a=a,x=X[i,], eps.Y=eps.Y, eps.M=eps.M, clever_coef.M=D_M[i], rel.tol = 0.01)$value})
+
+    # E(Dstar) for M=1|A,X
+    m_weight <- {1/p.alt}*ratio.A.X*(or_pred_alt_updated - kappa) # p(a') * p(a'|X)/p(a|X) * { E(Y|M,A=a',X) - int E(Y|M,A=a',X)p(M|A=a,X) dM }
+
+    EDstar_M <- mean((A==a)*m_weight) # I(A=a)/p(a') * p(a'|X)/p(a|X) * { E(Y|M,A=a',X) - int E(Y|M,A=a',X)p(M|A=a,X) dM }
+
+    estimated_psi = mean(ax_weight*kappa)
+
+    # EIF
+    EIF <- or_weight*(Y-or_pred_alt)+ #line 1 of the EIF equation
+      (A==a)*{m_weight}+ #line 2 of the EIF equation
+      ax_weight*(kappa - estimated_psi) #line 3 of the EIF equation
+
+
+    # confidence interval
+    lower.ci <- estimated_psi-1.96*sqrt(mean(EIF^2)/nrow(data))
+    upper.ci <- estimated_psi+1.96*sqrt(mean(EIF^2)/nrow(data))
+
+    tmle.out <- list(estimated_psi=estimated_psi, # estimated parameter
+                     lower.ci=lower.ci, # lower bound of 95% CI
+                     upper.ci=upper.ci, # upper bound of 95% CI
+                     p.M.aX=p.M.aX_updated,  # estimated M=1|A,X
+                     p.a1.X=p.a1.X,  # estimated A=1|X
+                     or_pred_alt=or_pred_alt_updated, # estimated E(Y|M,A,X)
+                     #
+                     EIF=EIF, # EIF
+                     EDstar=c(EDstar_or,EDstar_M) # EIF
+    ) # number of iterations for M|A,X and A|X to converge
   }
 
-  # range of eps.M that make the density positive
-  range_eps.M <- function(eps.M){ range_eps.M <- c(max(max(-1/D_M[D_M>0]),-1e-5),min(min(-1/D_M[D_M<0]),1e-5))}
 
-
-  # find the optimal eps2 that minimize the loss function
-  eps.M <- optimize(loss_M, range_eps.M(D_M), tol=0.0001, maximum=F)$minimum # the domain of eps2 is not R
-
-  # update p(M|A=a,X)
-  p.M.aX_updated <- p.M.aX*(1+eps.M*D_M)
-
-
-
-  ######################
-  # Update E(Y|M,alt,X)
-  ######################
-
-  ## clever coefficient for E(Y|M,alt,X)
-  clever_coef.Y <- {1/p.alt}*p.M.aX_updated*{1/p.M.altX} # used for fitting the target regression, and updating E(Y|M,a',X)
-  or_weight <- (A==alt)*clever_coef.Y  # used if calculating EIF
-
-  # offset term for E(Y|M,alt,X)
-  offset.Y <- or_pred_alt
-
-  model.Y <- glm( Y ~ offset(offset.Y)+1, weights=or_weight)
-
-  eps.Y = coef(model.Y)
-
-  # update E(Y|M,alt,X)
-  or_pred_alt_updated <- or_pred_alt + eps.Y
-
-  # calculated E(Dstar) for Y|M,alt,X
-  EDstar_or <- mean(or_weight*(Y-or_pred_alt_updated)) # weight*(Y - E(Y|M,a',X))
-
-  # estimated psi
-  ax_weight <- (A==alt)*{1/p.alt}
-  kappa <- sapply(1:n, function(i){integrate(integrand,lower = range(M)[1], upper = range(M)[2], a=a,x=X[i,], eps.Y=eps.Y, eps.M=eps.M, clever_coef.M=D_M[i], rel.tol = 0.01)$value})
-
-  # E(Dstar) for M=1|A,X
-  m_weight <- {1/p.alt}*ratio.A.X*(or_pred_alt_updated - kappa) # p(a') * p(a'|X)/p(a|X) * { E(Y|M,A=a',X) - int E(Y|M,A=a',X)p(M|A=a,X) dM }
-
-  EDstar_M <- mean((A==a)*m_weight) # I(A=a)/p(a') * p(a'|X)/p(a|X) * { E(Y|M,A=a',X) - int E(Y|M,A=a',X)p(M|A=a,X) dM }
-
-  estimated_psi = mean(ax_weight*kappa)
-
-  # EIF
-  EIF <- or_weight*(Y-or_pred_alt)+ #line 1 of the EIF equation
-    (A==a)*{m_weight}+ #line 2 of the EIF equation
-    ax_weight*(kappa - estimated_psi) #line 3 of the EIF equation
-
-
-  # confidence interval
-  lower.ci <- estimated_psi-1.96*sqrt(mean(EIF^2)/nrow(data))
-  upper.ci <- estimated_psi+1.96*sqrt(mean(EIF^2)/nrow(data))
-
-  tmle.out <- list(estimated_psi=estimated_psi, # estimated parameter
-                   lower.ci=lower.ci, # lower bound of 95% CI
-                   upper.ci=upper.ci, # upper bound of 95% CI
-                   p.M.aX=p.M.aX_updated,  # estimated M=1|A,X
-                   p.a1.X=p.a1.X,  # estimated A=1|X
-                   or_pred_alt=or_pred_alt_updated, # estimated E(Y|M,A,X)
-                   #
-                   EIF=EIF, # EIF
-                   EDstar=c(EDstar_or,EDstar_M) # EIF
-                   ) # number of iterations for M|A,X and A|X to converge
-
-  if (onestep==T){return(list(TMLE=tmle.out,Onestep=onestep.out))}else{return(TMLE=tmle.out)}
+  if(length(estimator)==2){
+    return(list(TMLE=tmle.out,Onestep=onestep.out))
+  }else{
+    if ('onestep'==estimator){return(list(Onestep=onestep.out))}
+    else if ('tmle'==estimator){return(TMLE=tmle.out)}
+  }
 
 }

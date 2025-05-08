@@ -6,8 +6,6 @@
 #' @param mediator Variable name for the binary univariate mediator
 #' @param outcome Variable name for the continuous univariate outcome
 #' @param covariates Variable name for the measured confounders
-#' @param onestep A logical indicator determines whether one-step estimation is executed. When 'onestep=T', the one-step estimation result is provided.
-#' Conversely, if 'onestep=F', the result is withheld.
 #' @param superlearner A logical indicator determines whether SuperLearner is adopted for estimating the outcome regression, mediator density, and the propensity score.
 #' @param crossfit A logical indicator determines whether SuperLearner+Cross-fitting is adopted for estimating the outcome regression, mediator density, and the propensity score.
 #' @param K A integer indicating the number of folds for cross-fitting, the default is 5.
@@ -22,6 +20,8 @@
 #' @param linkM_binary The link function used for the logistic regression of M on A and X. The default is the 'logit' link. This parameter is only needed when M is a univariate binary mediator.
 #' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.01.
 #' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 0.99.
+#' @param estimator A character string indicating which estimator is to be used. The options are "onestep" and "tmle".
+#' @param boundedsubmodelY An indicator for whether the bounded submodel is used for targeting the outcome regression when Z is discrete. The default is FALSE.
 #' @return a list of initialization of matrices.
 #' @examples
 #' \donttest{
@@ -50,10 +50,11 @@
 #'
 
 TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
-                        onestep=TRUE, superlearner=TRUE,crossfit=FALSE,K=5,
+                        superlearner=TRUE,crossfit=FALSE,K=5,
                         lib = c("SL.glm","SL.earth","SL.ranger","SL.mean"), n.iter=500, cvg.criteria=0.01,
                         formulaY="Y ~ .", formulaA="A ~ .", formulaM="M~.", linkY_binary="logit", linkA="logit", linkM_binary="logit",
-                        truncate_lower=0.01, truncate_upper=0.99){
+                        truncate_lower=0.01, truncate_upper=0.99,
+                        estimator='onestep',boundedsubmodelY=F){
 
   # attach(data, warn.conflicts=FALSE)
 
@@ -97,7 +98,13 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
 
     } else { # continuous outcome
 
-      or_fit <- CV.SuperLearner(Y=Y, X=data_MAX, family = gaussian(), V = K, SL.library = lib, control = list(saveFitLibrary=T),saveAll = T)
+      if (boundedsubmodelY & estimator=='tmle'){
+        or_fit <- CV.SuperLearner(Y=(Y-min(Y))/(max(Y)-min(Y)), X=data_MAX, family = gaussian(), V = K, SL.library = lib, control = list(saveFitLibrary=T),saveAll = T)
+      }else{
+        or_fit <- CV.SuperLearner(Y=Y, X=data_MAX, family = gaussian(), V = K, SL.library = lib, control = list(saveFitLibrary=T),saveAll = T)
+      }
+
+
       or_pred <- or_fit$SL.predict
       or_pred_a1 <- unlist(lapply(1:K, function(x) predict(or_fit$AllSL[[x]], newdata=data_A1[or_fit$folds[[x]],])[[1]] %>% as.vector()))[order(unlist(lapply(1:K, function(x) or_fit$folds[[x]])))]
       or_pred_a0 <- unlist(lapply(1:K, function(x) predict(or_fit$AllSL[[x]], newdata=data_A0[or_fit$folds[[x]],])[[1]] %>% as.vector()))[order(unlist(lapply(1:K, function(x) or_fit$folds[[x]])))]
@@ -125,7 +132,12 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
 
     } else { # continuous outcome
 
-      or_fit <- SuperLearner(Y=Y, X=data_MAX, family = gaussian(),SL.library = lib)
+      if(boundedsubmodelY & estimator=='tmle'){
+        or_fit <- SuperLearner(Y=(Y-min(Y))/(max(Y)-min(Y)), X=data_MAX, family = gaussian(),SL.library = lib)
+      }else{
+        or_fit <- SuperLearner(Y=Y, X=data_MAX, family = gaussian(),SL.library = lib)
+      }
+
       or_pred <- predict(or_fit)[[1]] %>% as.vector()
       or_pred_a1 <- predict(or_fit, newdata=data_A1)[[1]] %>% as.vector()
       or_pred_a0 <- predict(or_fit, newdata=data_A0)[[1]] %>% as.vector()
@@ -154,7 +166,12 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
 
     } else { # continuous outcome
 
-      or_fit <- lm(as.formula(formulaY), data=data_MAX)
+      if(boundedsubmodelY & estimator=='tmle'){
+        or_fit <- lm(as.formula(formulaY), data=data_MAX %>% mutate(Y=(Y-min(Y))/(max(Y)-min(Y)) ))
+      }else{
+        or_fit <- lm(as.formula(formulaY), data=data_MAX)
+      }
+
       or_pred <- predict(or_fit)
       or_pred_a1 <- predict(or_fit, newdata=data_A1)
       or_pred_a0 <- predict(or_fit, newdata=data_A0)
@@ -165,6 +182,23 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
       or_pred_a0m0 <- predict(or_fit, newdata=data_A0M0)
 
     }
+
+  }
+
+  # rescaling to avoid numerical issue in TMLE
+  if(boundedsubmodelY & 'tmle' %in% estimator & !all(Y %in% c(0,1))){ # binary outcome
+
+    boundedsubmodelY.truncate_lower <- 0.001
+    boundedsubmodelY.truncate_upper <- 0.999
+
+    or_pred[or_pred>boundedsubmodelY.truncate_upper] <- boundedsubmodelY.truncate_upper; or_pred[or_pred<boundedsubmodelY.truncate_lower] <- boundedsubmodelY.truncate_lower
+    or_pred_a1[or_pred_a1>boundedsubmodelY.truncate_upper] <- boundedsubmodelY.truncate_upper; or_pred_a1[or_pred_a1<boundedsubmodelY.truncate_lower] <- boundedsubmodelY.truncate_lower
+    or_pred_a0[or_pred_a0>boundedsubmodelY.truncate_upper] <- boundedsubmodelY.truncate_upper; or_pred_a0[or_pred_a0<boundedsubmodelY.truncate_lower] <- boundedsubmodelY.truncate_lower
+
+    or_pred_a1m1[or_pred_a1m1>boundedsubmodelY.truncate_upper] <- boundedsubmodelY.truncate_upper; or_pred_a1m1[or_pred_a1m1<boundedsubmodelY.truncate_lower] <- boundedsubmodelY.truncate_lower
+    or_pred_a1m0[or_pred_a1m0>boundedsubmodelY.truncate_upper] <- boundedsubmodelY.truncate_upper; or_pred_a1m0[or_pred_a1m0<boundedsubmodelY.truncate_lower] <- boundedsubmodelY.truncate_lower
+    or_pred_a0m1[or_pred_a0m1>boundedsubmodelY.truncate_upper] <- boundedsubmodelY.truncate_upper; or_pred_a0m1[or_pred_a0m1<boundedsubmodelY.truncate_lower] <- boundedsubmodelY.truncate_lower
+    or_pred_a0m0[or_pred_a0m0>boundedsubmodelY.truncate_upper] <- boundedsubmodelY.truncate_upper; or_pred_a0m0[or_pred_a0m0<boundedsubmodelY.truncate_lower] <- boundedsubmodelY.truncate_lower
 
   }
 
@@ -345,7 +379,8 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
 
   ############################################################### One step estimator ###############################################################
   ## onestep estimator
-  if (onestep==T){
+
+  if('onestep' %in% estimator){
     ######################
     # E[Dstar] calculations
     ######################
@@ -408,8 +443,8 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
                         EDstar=c(EDstar_or,EDstar_M, EDstar_ps)) # E(Dstar) for Y|M,A,X and M|A,X, and A|X
 
     print("One step estimator done")
-
   }
+
 
 
 
@@ -420,376 +455,402 @@ TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
 
   ############################################################### TMLE estimator ###############################################################
 
-  if (all(Y %in% c(0,1))){ # binary Y
+  if ('tmle' %in% estimator){ ## whether to run TMLE
 
 
-    ## TMLE initialize
-    # initialize eps1, eps2, eps3, eps123
-    eps1 <- 1 # submodel parameter for outcome regression E(Y|M,A,X)
-    eps2 <- 1 # submodel parameter for mediator density p(M|A,X)
-    eps3 <- 1 # submodel parameter for propensity score p(A|X)
+    if (all(Y %in% c(0,1))|boundedsubmodelY){ # binary Y
 
-    # record the values of eps2, eps3, and eps2n3 over iterations
 
-    eps1_vec <- vector(mode = "numeric")
-    eps2_vec <- vector(mode = "numeric")
-    eps3_vec <- vector(mode = "numeric")
+      ## TMLE initialize
+      # initialize eps1, eps2, eps3, eps123
+      eps1 <- 1 # submodel parameter for outcome regression E(Y|M,A,X)
+      eps2 <- 1 # submodel parameter for mediator density p(M|A,X)
+      eps3 <- 1 # submodel parameter for propensity score p(A|X)
 
-    # place holder for clever coefficient 1 & 2 & 3
-    clever_coef1 <- 0 # clever coefficient for outcome regression E(Y|M,A,X)
-    clever_coef2 <- 0 # clever coefficient for mediator density p(M|A,X)
-    clever_coef3 <- 0 # clever coefficient for propensity score p(A|X)
+      # record the values of eps2, eps3, and eps2n3 over iterations
 
-    # cumulative summation of eps*clever-coefficient
-    clever_coef1_add <- 0
-    clever_coef2_add <- 0
-    clever_coef3_add <- 0
+      eps1_vec <- vector(mode = "numeric")
+      eps2_vec <- vector(mode = "numeric")
+      eps3_vec <- vector(mode = "numeric")
 
-    # record average EIF in the sub-tangent space corresponding to Y|M,A,X, M|A,X and A|X over iterations
-    EDstar_Y <- 1 # initial value
-    EDstar_M <- 1 # initial value
-    EDstar_ps <- 1 # initial value
+      # place holder for clever coefficient 1 & 2 & 3
+      clever_coef1 <- 0 # clever coefficient for outcome regression E(Y|M,A,X)
+      clever_coef2 <- 0 # clever coefficient for mediator density p(M|A,X)
+      clever_coef3 <- 0 # clever coefficient for propensity score p(A|X)
 
-    EDstar_Y.vec <- vector(mode = "numeric")
-    EDstar_M.vec <- vector(mode = "numeric")
-    EDstar_ps.vec <- vector(mode = "numeric")
+      # cumulative summation of eps*clever-coefficient
+      clever_coef1_add <- 0
+      clever_coef2_add <- 0
+      clever_coef3_add <- 0
 
-    # initialize E(Y|M,A,X), p(A=1|X), p(M=1|A=a,X)
-    or_pred_updated <- or_pred
-    # or_pred_a1m1_updated <- or_pred_a1m1
-    # or_pred_a1m0_updated <- or_pred_a1m0
-    # or_pred_a0m1_updated <- or_pred_a0m1
-    # or_pred_a0m0_updated <- or_pred_a0m0
+      # record average EIF in the sub-tangent space corresponding to Y|M,A,X, M|A,X and A|X over iterations
+      EDstar_Y <- 1 # initial value
+      EDstar_M <- 1 # initial value
+      EDstar_ps <- 1 # initial value
 
-    p.a1.X_updated <- p.a1.X
-    p.m1.aX_updated <- p.m1.aX
+      EDstar_Y.vec <- vector(mode = "numeric")
+      EDstar_M.vec <- vector(mode = "numeric")
+      EDstar_ps.vec <- vector(mode = "numeric")
 
-    # iterations
-    iter <- 0
+      # initialize E(Y|M,A,X), p(A=1|X), p(M=1|A=a,X)
+      # or_pred_updated <- or_pred
+      # or_pred_a1m1_updated <- or_pred_a1m1
+      # or_pred_a1m0_updated <- or_pred_a1m0
+      # or_pred_a0m1_updated <- or_pred_a0m1
+      # or_pred_a0m0_updated <- or_pred_a0m0
 
-    while (max(abs(EDstar_M), abs(EDstar_ps), abs(EDstar_Y))>cvg.criteria & iter<n.iter) {
+      # p.a1.X_updated <- p.a1.X
+      # p.m1.aX_updated <- p.m1.aX
+
+      # iterations
+      iter <- 0
+
+      if(boundedsubmodelY){
+
+        cat("boundedsubmodelY is TRUE, rescaling Y to [0,1] \n")
+
+        minY <- min(Y)
+        maxY <- max(Y)
+
+        Y <- (Y-minY)/(maxY-minY) # rescale Y to [0,1]
+
+      }
+
+
+      while (max(abs(EDstar_M), abs(EDstar_ps), abs(EDstar_Y))>cvg.criteria & iter<n.iter) {
+
+        ######################
+        # update p(M|A=a,X)
+        ######################
+
+        ## clever coefficient for M|A=a,X
+        p.a.X <- a*p.a1.X+(1-a)*(1-p.a1.X) # p(A=a|X)
+
+        clever_coef2 = {1/p.a.X}*
+          (or_pred_a1m1*p.a1.X+ # E(Y|M=1, A=1, X)*p(A=1|X)
+             or_pred_a0m1*(1-p.a1.X)- # E(Y|M=1, A=0, X)*p(A=0|X)
+             or_pred_a1m0*p.a1.X- # E(Y|M=0, A=1, X)*p(A=1|X)
+             or_pred_a0m0*(1-p.a1.X)) # E(Y|M=0, A=0, X)*p(A=0|X)
+
+        # offset term for M|A=a,X
+        offset_M <- qlogis(p.m1.aX)
+
+        # derive eps2
+        M_model <- glm(
+          M ~ offset(offset_M)+clever_coef2-1, weights=(A==a)*1, family=binomial()
+        )
+
+        eps2 <-  coef(M_model)
+        eps2_vec <- c(eps2_vec,eps2)
+
+        # print(paste0('iter: ',iter,'. M model done. eps=',eps2))
+
+        # # update cumulative summation of eps2*clever coefficient
+        # clever_coef2_add = clever_coef2_add + eps2*(clever_coef2)
+
+        # update p(M=1|A=a,X)
+        p.m1.aX <- plogis(qlogis(p.m1.aX)+eps2*clever_coef2)
+
+        # E(Dstar) for M|A,X
+        EDstar_M <- mean((A==a)*clever_coef2*(M-p.m1.aX))
+        EDstar_M.vec <- c(EDstar_M.vec,EDstar_M)
+
+        ######################
+        # update p(A=1|X)
+        ######################
+
+        # clever coefficient for propensity score
+        clever_coef3=or_pred_a1m1*p.m1.aX+ # E(Y|M=1,A=1,X)*p(M=1|A=a,X)
+          or_pred_a1m0*(1-p.m1.aX)- # E(Y|M=0,A=1,X)*p(M=0|A=a,X)
+          or_pred_a0m1*p.m1.aX- # E(Y|M=1,A=0,X)*p(M=1|A=a,X)
+          or_pred_a0m0*(1-p.m1.aX) # E(Y|M=0,A=0,X)*p(M=0|A=a,X)
+
+        # offset term for the propensity score
+        # the same as: qlogis(p.a1.X_updated)
+        offset_ps <- qlogis(p.a1.X)
+
+        # derive eps3
+        ps_model <- glm(
+          A ~ offset(offset_ps)+clever_coef3-1, family=binomial(), start=0
+        )
+
+        eps3 <- coef(ps_model)
+        eps3_vec <- c(eps3_vec,eps3)
+
+        # print(paste0('iter: ',iter,'. A model done. eps=',eps3))
+
+        # # update cumulative summation of eps3*clever coefficient
+        # clever_coef3_add = clever_coef3_add + eps3*(clever_coef3)
+
+        # updated propensity score
+        p.a1.X <- plogis(qlogis(p.a1.X)+eps3*clever_coef3)
+
+        # E(Dstar) for A|X
+        EDstar_ps <- mean(clever_coef3*(A-p.a1.X))
+        EDstar_ps.vec <- c(EDstar_ps.vec,EDstar_ps)
+
+
+        ######################
+        # update E(Y|M,A,X)
+        ######################
+
+        # clever coefficient for propensity score
+        p.m1.AX <- (A==a)*p.m1.aX+(1-(A==a))*p.m1.AX
+
+        or_weight <- (M*p.m1.aX+(1-M)*(1-p.m1.aX))/(M*p.m1.AX+(1-M)*(1-p.m1.AX)) # p(M|a,X)/p(M|A,X)
+        clever_coef1 <- or_weight
+
+        # offset term for outcome regression
+        offset_Y <- qlogis(or_pred)
+
+        # one iteration
+        or_model <- glm(
+          Y ~ offset(offset_Y)+clever_coef1-1, family=binomial(), start=0
+        )
+
+        eps1 = coef(or_model)
+        eps1_vec <- c(eps1_vec,eps1)
+
+        # print(paste0('iter: ',iter,'. Y model done. eps=',eps1))
+
+        # # update cumulative summation of eps1*clever coefficient
+        # clever_coef1_add = clever_coef1_add + eps1*(clever_coef1)
+
+        # updated outcome regression
+        or_pred = plogis(qlogis(or_pred)+eps1*clever_coef1)
+
+        or_pred_a1m1 = plogis(qlogis(or_pred_a1m1)+eps1*{(a==1)*1+(a==0)*p.m1.aX/p.m1.a1X})
+        or_pred_a0m1 = plogis(qlogis(or_pred_a0m1)+eps1*{(a==0)*1+(a==1)*p.m1.aX/p.m1.a0X})
+        or_pred_a1m0 = plogis(qlogis(or_pred_a1m0)+eps1*{(a==1)*1+(a==0)*(1-p.m1.aX)/(1-p.m1.a1X)})
+        or_pred_a0m0 = plogis(qlogis(or_pred_a0m0)+eps1*{(a==0)*1+(a==1)*(1-p.m1.aX)/(1-p.m1.a0X)})
+
+        # E(Dstar) for Y|M,A,X
+        EDstar_Y <- mean(clever_coef1*(Y-or_pred))
+        EDstar_Y.vec <- c(EDstar_Y.vec,EDstar_Y)
+
+        iter <- iter+1
+
+        cat('TMLE iteration:',iter,'\n')
+
+      }
+
 
       ######################
-      # update p(M|A=a,X)
+      # estimate E[Y(a)]
       ######################
 
-      ## clever coefficient for M|A=a,X
-      p.a.X_updated <- a*p.a1.X_updated+(1-a)*(1-p.a1.X_updated) # p(A=a|X)
+      # theta(X) = int E(Y|M,A,X)p(M|A=a,X)p(A|X)dM dA
+      theta_x <- or_pred_a1m1*p.m1.aX*p.a1.X+ # M=1,A=1
+        or_pred_a0m1*p.m1.aX*(1-p.a1.X)+ # M=1, A=0
+        or_pred_a1m0*(1-p.m1.aX)*p.a1.X+ # M=0, A=1
+        or_pred_a0m0*(1-p.m1.aX)*(1-p.a1.X) # M=0, A=0
 
-      clever_coef2 = {1/p.a.X_updated}*
-        (or_pred_a1m1*p.a1.X_updated+ # E(Y|M=1, A=1, X)*p(A=1|X)
-           or_pred_a0m1*(1-p.a1.X_updated)- # E(Y|M=1, A=0, X)*p(A=0|X)
-           or_pred_a1m0*p.a1.X_updated- # E(Y|M=0, A=1, X)*p(A=1|X)
-           or_pred_a0m0*(1-p.a1.X_updated)) # E(Y|M=0, A=0, X)*p(A=0|X)
-
-      # offset term for M|A=a,X
-      offset_M <- qlogis(p.m1.aX) + clever_coef2_add
+      # estimated psi
+      estimated_psi = mean(theta_x)
 
 
-      # derive eps2
-      M_model <- glm(
-        M ~ offset(offset_M)+clever_coef2-1, weights=(A==a)*1, family=binomial()
-      )
+    } else { # continuous Y
 
-      eps2 <-  coef(M_model)
-      eps2_vec <- c(eps2_vec,eps2)
 
-      # print(paste0('iter: ',iter,'. M model done. eps=',eps2))
+      ## TMLE initialize
+      # initialize eps2, eps3, eps2n3
+      eps2 <- 1
+      eps3 <- 1
 
-      # update cumulative summation of eps2*clever coefficient
-      clever_coef2_add = clever_coef2_add + eps2*(clever_coef2)
+      # record the values of eps2, eps3, and eps2n3 over iterations
+      eps2_vec <- vector(mode = "numeric")
+      eps3_vec <- vector(mode = "numeric")
 
-      # update p(M=1|A=a,X)
-      p.m1.aX_updated <- plogis(qlogis(p.m1.aX)+clever_coef2_add)
+      # place holder for clever coefficient 2 & 3
+      clever_coef2 <- 0
+      clever_coef3 <- 0
 
-      # E(Dstar) for M|A,X
-      EDstar_M <- mean((A==a)*clever_coef2*(M-p.m1.aX_updated))
-      EDstar_M.vec <- c(EDstar_M.vec,EDstar_M)
+      # cumulative summation of eps*clever-coefficient
+      clever_coef2_add <- 0
+      clever_coef3_add <- 0
+
+      # record E(Dstar) for M|A,X and propensity score over iterations
+      EDstar_M <- 1 # initial value
+      EDstar_ps <- 1 # initial value
+      EDstar_M.vec <- vector(mode = "numeric")
+      EDstar_ps.vec <- vector(mode = "numeric")
+
+      # initial p(A=1|X), p(M=1|A=a,X)
+      # p.a1.X_updated <- p.a1.X
+      # p.m1.aX_updated <- p.m1.aX
+
+      # iterations
+      iter <- 0
+
+      while (max(abs(EDstar_M),abs(EDstar_ps))>cvg.criteria & iter<n.iter) {
+
+        ######################
+        # update p(M|A=a,X)
+        ######################
+
+        ## clever coefficient for M|A=a,X
+        p.a.X <- a*p.a1.X+(1-a)*(1-p.a1.X) # p(A=a|X)
+
+        clever_coef2 = {1/p.a.X}*
+          (or_pred_a1m1*p.a1.X+ # E(Y|M=1, A=1, X)*p(A=1|X)
+             or_pred_a0m1*(1-p.a1.X)- # E(Y|M=1, A=0, X)*p(A=0|X)
+             or_pred_a1m0*p.a1.X- # E(Y|M=0, A=1, X)*p(A=1|X)
+             or_pred_a0m0*(1-p.a1.X)) # E(Y|M=0, A=0, X)*p(A=0|X)
+
+        # offset term for M|A=a,X
+        offset_M <- qlogis(p.m1.aX)
+
+        # derive eps2
+        M_model <- glm(
+          M ~ offset(offset_M)+clever_coef2-1, weights=(A==a)*1, family=binomial()
+        )
+
+
+        eps2 <-  coef(M_model)
+        eps2_vec <- c(eps2_vec,eps2)
+
+        # update cumulative summation of eps2*clever coefficient
+        # clever_coef2_add = clever_coef2_add + eps2*(clever_coef2)
+
+        # update p(M=1|A=a,X)
+        p.m1.aX <- plogis(qlogis(p.m1.aX)+eps2*(clever_coef2))
+
+        # E(Dstar) for M|A,X
+        EDstar_M <- mean((A==a)*clever_coef2*(M-p.m1.aX))
+        EDstar_M.vec <- c(EDstar_M.vec,EDstar_M)
+
+        ######################
+        # update p(A=1|X)
+        ######################
+
+        # clever coefficient for propensity score
+        clever_coef3=or_pred_a1m1*p.m1.aX+ # E(Y|M=1,A=1,X)*p(M=1|A=a,X)
+          or_pred_a1m0*(1-p.m1.aX)- # E(Y|M=0,A=1,X)*p(M=0|A=a,X)
+          or_pred_a0m1*p.m1.aX- # E(Y|M=1,A=0,X)*p(M=1|A=a,X)
+          or_pred_a0m0*(1-p.m1.aX) # E(Y|M=0,A=0,X)*p(M=0|A=a,X)
+
+        # offset term for the propensity score
+        # the same as: qlogis(p.a1.X_updated)
+        offset_ps <- qlogis(p.a1.X)
+
+
+        # derive eps3
+        ps_model <- glm(
+          A ~ offset(offset_ps)+clever_coef3-1, family=binomial(), start=0
+        )
+
+
+        eps3 <- coef(ps_model)
+        eps3_vec <- c(eps3_vec,eps3)
+
+        # update cumulative summation of eps3*clever coefficient
+        # clever_coef3_add = clever_coef3_add + eps3*(clever_coef3)
+
+        # updated propensity score
+        p.a1.X <- plogis(qlogis(p.a1.X)+eps3*(clever_coef3))
+
+        # E(Dstar)-iteration1
+        EDstar_ps <- mean(clever_coef3*(A-p.a1.X))
+        EDstar_ps.vec <- c(EDstar_ps.vec,EDstar_ps)
+
+        iter <- iter+1
+      }
 
       ######################
-      # update p(A=1|X)
+      # update E[Y|A,M,X]
       ######################
 
-      # clever coefficient for propensity score
-      clever_coef3=or_pred_a1m1*p.m1.aX_updated+ # E(Y|M=1,A=1,X)*p(M=1|A=a,X)
-        or_pred_a1m0*(1-p.m1.aX_updated)- # E(Y|M=0,A=1,X)*p(M=0|A=a,X)
-        or_pred_a0m1*p.m1.aX_updated- # E(Y|M=1,A=0,X)*p(M=1|A=a,X)
-        or_pred_a0m0*(1-p.m1.aX_updated) # E(Y|M=0,A=0,X)*p(M=0|A=a,X)
-
-      # offset term for the propensity score
-      # the same as: qlogis(p.a1.X_updated)
-      offset_ps <- qlogis(p.a1.X) + clever_coef3_add
-
-      # derive eps3
-      ps_model <- glm(
-        A ~ offset(offset_ps)+clever_coef3-1, family=binomial(), start=0
-      )
-
-      eps3 <- coef(ps_model)
-      eps3_vec <- c(eps3_vec,eps3)
-
-      # print(paste0('iter: ',iter,'. A model done. eps=',eps3))
-
-      # update cumulative summation of eps3*clever coefficient
-      clever_coef3_add = clever_coef3_add + eps3*(clever_coef3)
-
-      # updated propensity score
-      p.a1.X_updated <- plogis(qlogis(p.a1.X)+clever_coef3_add)
-
-      # E(Dstar) for A|X
-      EDstar_ps <- mean(clever_coef3*(A-p.a1.X_updated))
-      EDstar_ps.vec <- c(EDstar_ps.vec,EDstar_ps)
-
-
-      ######################
-      # update E(Y|M,A,X)
-      ######################
-
-      # clever coefficient for propensity score
-      p.m1.AX_updated <- (A==a)*p.m1.aX_updated+(1-(A==a))*p.m1.AX
-
-      or_weight <- (M*p.m1.aX_updated+(1-M)*(1-p.m1.aX_updated))/(M*p.m1.AX_updated+(1-M)*(1-p.m1.AX_updated)) # p(M|a,X)/p(M|A,X)
-      clever_coef1 <- or_weight
-
-      # offset term for outcome regression
-      offset_Y <- qlogis(or_pred) + clever_coef1_add
+      p.m1.AX <- (A==a)*p.m1.aX+(1-(A==a))*p.m1.AX
+      or_weight <- (M*p.m1.aX+(1-M)*(1-p.m1.aX))/(M*p.m1.AX+(1-M)*(1-p.m1.AX))
 
       # one iteration
       or_model <- glm(
-        Y ~ offset(or_pred)+clever_coef1-1, family=binomial(), start=0
+        Y ~ offset(or_pred)+1, weights = or_weight
       )
+
 
       eps1 = coef(or_model)
-      eps1_vec <- c(eps1_vec,eps1)
-
-      # print(paste0('iter: ',iter,'. Y model done. eps=',eps1))
-
-      # update cumulative summation of eps1*clever coefficient
-      clever_coef1_add = clever_coef1_add + eps1*(clever_coef1)
 
       # updated outcome regression
-      or_pred_updated = plogis(qlogis(or_pred)+clever_coef3_add)
+      or_pred = or_pred + eps1
 
-      or_pred_a1m1 = plogis(qlogis(or_pred_a1m1)+eps1*{(a==1)*1+(a==0)*p.m1.aX_updated/p.m1.a1X})
-      or_pred_a0m1 = plogis(qlogis(or_pred_a0m1)+eps1*{(a==0)*1+(a==1)*p.m1.aX_updated/p.m1.a0X})
-      or_pred_a1m0 = plogis(qlogis(or_pred_a1m0)+eps1*{(a==1)*1+(a==0)*(1-p.m1.aX_updated)/(1-p.m1.a1X)})
-      or_pred_a0m0 = plogis(qlogis(or_pred_a0m0)+eps1*{(a==0)*1+(a==1)*(1-p.m1.aX_updated)/(1-p.m1.a0X)})
+      ######################
+      # E[Dstar] calculations
+      ######################
 
-      # E(Dstar) for Y|M,A,X
-      EDstar_Y <- mean(clever_coef1*(Y-or_pred_updated))
-      EDstar_Y.vec <- c(EDstar_Y.vec,EDstar_Y)
+      # E(Dstar) for E(Y|M,A,X)
+      EDstar_Y <- mean(or_weight*(Y-or_pred))
+
+      #E(Dstar) for M=1|A,X
+      # since p.a.X_updated might have changed, need to recalculate clever_coef2
+      p.a.X <- a*p.a1.X+(1-a)*(1-p.a1.X) # p(A=a|X)
+
+      clever_coef2 <- {1/p.a.X}*
+        (or_pred_a1m1*p.a1.X+ # M=1,A=1
+           or_pred_a0m1*(1-p.a1.X)- # M=1, A=0
+           or_pred_a1m0*p.a1.X- # M=0, A=1
+           or_pred_a0m0*(1-p.a1.X)) # M=0, A=0
+
+      EDstar_M <- mean((A==a)*clever_coef2*(M-p.m1.aX))
+
+      # E(Dstar) for A=a|X
+      EDstar_ps <- mean(clever_coef3*(A-p.a1.X))
 
 
-      iter <- iter+1
+      ######################
+      # estimate E[Y(a)]
+      ######################
+
+      # theta(X) = int E(Y|M,A,X)p(M|A=a,X)p(A|X)dM dA
+      theta_x <- (or_pred_a1m1+eps1)*p.m1.aX*p.a1.X+ # M=1,A=1
+        (or_pred_a0m1+eps1)*p.m1.aX*(1-p.a1.X)+ # M=1, A=0
+        (or_pred_a1m0+eps1)*(1-p.m1.aX)*p.a1.X+ # M=0, A=1
+        (or_pred_a0m0+eps1)*(1-p.m1.aX)*(1-p.a1.X) # M=0, A=0
+
+      # estimated psi
+      estimated_psi = mean(theta_x)
+
+    }
+
+    # EIF
+    EIF <- or_weight*(Y-or_pred)+ #line 1 of the EIF equation
+      I(A==a)*clever_coef2*(M-p.m1.aX)+ #line 2 of the EIF equation
+      clever_coef3*(A-p.a1.X)+ #line 3 of the EIF equation
+      theta_x - mean(theta_x) #line 4 of the EIF equation
+
+    # rescale back
+    if(boundedsubmodelY){
+      estimated_psi <- estimated_psi*(maxY-minY)+minY
+      EIF <- EIF*(maxY-minY)
     }
 
 
-    ######################
-    # estimate E[Y(a)]
-    ######################
+    # confidence interval
+    lower.ci <- estimated_psi-1.96*sqrt(mean(EIF^2)/nrow(data))
+    upper.ci <- estimated_psi+1.96*sqrt(mean(EIF^2)/nrow(data))
 
-    # theta(X) = int E(Y|M,A,X)p(M|A=a,X)p(A|X)dM dA
-    theta_x <- or_pred_a1m1*p.m1.aX_updated*p.a1.X_updated+ # M=1,A=1
-      or_pred_a0m1*p.m1.aX_updated*(1-p.a1.X_updated)+ # M=1, A=0
-      or_pred_a1m0*(1-p.m1.aX_updated)*p.a1.X_updated+ # M=0, A=1
-      or_pred_a0m0*(1-p.m1.aX_updated)*(1-p.a1.X_updated) # M=0, A=0
+    tmle.out <- list(estimated_psi=estimated_psi, # estimated parameter
+                     lower.ci=lower.ci, # lower bound of 95% CI
+                     upper.ci=upper.ci, # upper bound of 95% CI
+                     theta_x=theta_x, # theta(x)
+                     p.m1.aX=p.m1.aX,  # estimated M=1|A,X
+                     p.a1.X=p.a1.X,  # estimated A=1|X
+                     or_pred=or_pred, # estimated E(Y|M,A,X)
+                     EIF=EIF, # EIF
+                     #
+                     EDstar=c(EDstar_Y,EDstar_M, EDstar_ps), # E(Dstar) for Y|M,A,X and M|A,X, and A|X
+                     EDstar_M.vec=EDstar_M.vec, # E(Dstar) for M|A,X over iterations
+                     EDstar_ps.vec=EDstar_ps.vec, # E(Dstar) for A|X over iterations
+                     #
+                     eps2_vec=eps2_vec, # vector of eps2 over iterations
+                     eps3_vec=eps3_vec, # vector of eps3 over iterations
+                     iter=iter) # number of iterations for M|A,X and A|X to converge
 
-    # estimated psi
-    estimated_psi = mean(theta_x)
-
-
-  } else { # continuous Y
-
-
-    ## TMLE initialize
-    # initialize eps2, eps3, eps2n3
-    eps2 <- 1
-    eps3 <- 1
-
-    # record the values of eps2, eps3, and eps2n3 over iterations
-    eps2_vec <- vector(mode = "numeric")
-    eps3_vec <- vector(mode = "numeric")
-
-    # place holder for clever coefficient 2 & 3
-    clever_coef2 <- 0
-    clever_coef3 <- 0
-
-    # cumulative summation of eps*clever-coefficient
-    clever_coef2_add <- 0
-    clever_coef3_add <- 0
-
-    # record E(Dstar) for M|A,X and propensity score over iterations
-    EDstar_M <- 1 # initial value
-    EDstar_ps <- 1 # initial value
-    EDstar_M.vec <- vector(mode = "numeric")
-    EDstar_ps.vec <- vector(mode = "numeric")
-
-    # initial p(A=1|X), p(M=1|A=a,X)
-    p.a1.X_updated <- p.a1.X
-    p.m1.aX_updated <- p.m1.aX
-
-    # iterations
-    iter <- 0
-
-    while (max(abs(EDstar_M),abs(EDstar_ps))>cvg.criteria & iter<n.iter) {
-
-      ######################
-      # update p(M|A=a,X)
-      ######################
-
-      ## clever coefficient for M|A=a,X
-      p.a.X_updated <- a*p.a1.X_updated+(1-a)*(1-p.a1.X_updated) # p(A=a|X)
-
-      clever_coef2 = {1/p.a.X_updated}*
-        (or_pred_a1m1*p.a1.X_updated+ # E(Y|M=1, A=1, X)*p(A=1|X)
-           or_pred_a0m1*(1-p.a1.X_updated)- # E(Y|M=1, A=0, X)*p(A=0|X)
-           or_pred_a1m0*p.a1.X_updated- # E(Y|M=0, A=1, X)*p(A=1|X)
-           or_pred_a0m0*(1-p.a1.X_updated)) # E(Y|M=0, A=0, X)*p(A=0|X)
-
-      # offset term for M|A=a,X
-      offset_M <- qlogis(p.m1.aX) + clever_coef2_add
-
-
-      # derive eps2
-      M_model <- glm(
-        M ~ offset(offset_M)+clever_coef2-1, weights=(A==a)*1, family=binomial()
-      )
-
-
-      eps2 <-  coef(M_model)
-      eps2_vec <- c(eps2_vec,eps2)
-
-      # update cumulative summation of eps2*clever coefficient
-      clever_coef2_add = clever_coef2_add + eps2*(clever_coef2)
-
-      # update p(M=1|A=a,X)
-      p.m1.aX_updated <- plogis(qlogis(p.m1.aX)+clever_coef2_add)
-
-      # E(Dstar) for M|A,X
-      EDstar_M <- mean((A==a)*clever_coef2*(M-p.m1.aX_updated))
-      EDstar_M.vec <- c(EDstar_M.vec,EDstar_M)
-
-      ######################
-      # update p(A=1|X)
-      ######################
-
-      # clever coefficient for propensity score
-      clever_coef3=or_pred_a1m1*p.m1.aX_updated+ # E(Y|M=1,A=1,X)*p(M=1|A=a,X)
-        or_pred_a1m0*(1-p.m1.aX_updated)- # E(Y|M=0,A=1,X)*p(M=0|A=a,X)
-        or_pred_a0m1*p.m1.aX_updated- # E(Y|M=1,A=0,X)*p(M=1|A=a,X)
-        or_pred_a0m0*(1-p.m1.aX_updated) # E(Y|M=0,A=0,X)*p(M=0|A=a,X)
-
-      # offset term for the propensity score
-      # the same as: qlogis(p.a1.X_updated)
-      offset_ps <- qlogis(p.a1.X) + clever_coef3_add
-
-
-      # derive eps3
-      ps_model <- glm(
-        A ~ offset(offset_ps)+clever_coef3-1, family=binomial(), start=0
-      )
-
-
-      eps3 <- coef(ps_model)
-      eps3_vec <- c(eps3_vec,eps3)
-
-      # update cumulative summation of eps3*clever coefficient
-      clever_coef3_add = clever_coef3_add + eps3*(clever_coef3)
-
-      # updated propensity score
-      p.a1.X_updated <- plogis(qlogis(p.a1.X)+clever_coef3_add)
-
-      # E(Dstar)-iteration1
-      EDstar_ps <- mean(clever_coef3*(A-p.a1.X_updated))
-      EDstar_ps.vec <- c(EDstar_ps.vec,EDstar_ps)
-
-      iter <- iter+1
-    }
-
-    ######################
-    # update E[Y|A,M,X]
-    ######################
-
-    p.m1.AX_updated <- (A==a)*p.m1.aX_updated+(1-(A==a))*p.m1.AX
-    or_weight <- (M*p.m1.aX_updated+(1-M)*(1-p.m1.aX_updated))/(M*p.m1.AX_updated+(1-M)*(1-p.m1.AX_updated))
-
-    # one iteration
-    or_model <- glm(
-      Y ~ offset(or_pred)+1, weights = or_weight
-    )
-
-
-    eps1 = coef(or_model)
-
-    # updated outcome regression
-    or_pred_updated = or_pred + eps1
-
-    ######################
-    # E[Dstar] calculations
-    ######################
-
-    # E(Dstar) for E(Y|M,A,X)
-    EDstar_Y <- mean(or_weight*(Y-or_pred_updated))
-
-    #E(Dstar) for M=1|A,X
-    # since p.a.X_updated might have changed, need to recalculate clever_coef2
-    p.a.X_updated <- a*p.a1.X_updated+(1-a)*(1-p.a1.X_updated) # p(A=a|X)
-
-    clever_coef2 <- {1/p.a.X_updated}*
-      (or_pred_a1m1*p.a1.X_updated+ # M=1,A=1
-         or_pred_a0m1*(1-p.a1.X_updated)- # M=1, A=0
-         or_pred_a1m0*p.a1.X_updated- # M=0, A=1
-         or_pred_a0m0*(1-p.a1.X_updated)) # M=0, A=0
-
-    EDstar_M <- mean((A==a)*clever_coef2*(M-p.m1.aX_updated))
-
-    # E(Dstar) for A=a|X
-    EDstar_ps <- mean(clever_coef3*(A-p.a1.X_updated))
-
-
-    ######################
-    # estimate E[Y(a)]
-    ######################
-
-    # theta(X) = int E(Y|M,A,X)p(M|A=a,X)p(A|X)dM dA
-    theta_x <- (or_pred_a1m1+eps1)*p.m1.aX_updated*p.a1.X_updated+ # M=1,A=1
-      (or_pred_a0m1+eps1)*p.m1.aX_updated*(1-p.a1.X_updated)+ # M=1, A=0
-      (or_pred_a1m0+eps1)*(1-p.m1.aX_updated)*p.a1.X_updated+ # M=0, A=1
-      (or_pred_a0m0+eps1)*(1-p.m1.aX_updated)*(1-p.a1.X_updated) # M=0, A=0
-
-    # estimated psi
-    estimated_psi = mean(theta_x)
 
   }
 
-  # EIF
-  EIF <- or_weight*(Y-or_pred_updated)+ #line 1 of the EIF equation
-    I(A==a)*clever_coef2*(M-p.m1.aX_updated)+ #line 2 of the EIF equation
-    clever_coef3*(A-p.a1.X_updated)+ #line 3 of the EIF equation
-    theta_x - mean(theta_x) #line 4 of the EIF equation
 
+  if (estimator=='onestep'){return(list(Onestep=onestep.out))}
+  else if (estimator=='tmle'){return(list(TMLE=tmle.out))}
 
-  # confidence interval
-  lower.ci <- estimated_psi-1.96*sqrt(mean(EIF^2)/nrow(data))
-  upper.ci <- estimated_psi+1.96*sqrt(mean(EIF^2)/nrow(data))
-
-  tmle.out <- list(estimated_psi=estimated_psi, # estimated parameter
-                   lower.ci=lower.ci, # lower bound of 95% CI
-                   upper.ci=upper.ci, # upper bound of 95% CI
-                   theta_x=theta_x, # theta(x)
-                   p.m1.aX=p.m1.aX_updated,  # estimated M=1|A,X
-                   p.a1.X=p.a1.X_updated,  # estimated A=1|X
-                   or_pred=or_pred_updated, # estimated E(Y|M,A,X)
-                   EIF=EIF, # EIF
-                   #
-                   EDstar=c(EDstar_or,EDstar_M, EDstar_ps), # E(Dstar) for Y|M,A,X and M|A,X, and A|X
-                   EDstar_M.vec=EDstar_M.vec, # E(Dstar) for M|A,X over iterations
-                   EDstar_ps.vec=EDstar_ps.vec, # E(Dstar) for A|X over iterations
-                   #
-                   eps2_vec=eps2_vec, # vector of eps2 over iterations
-                   eps3_vec=eps3_vec, # vector of eps3 over iterations
-                   iter=iter) # number of iterations for M|A,X and A|X to converge
-
-  if (onestep==T){return(list(TMLE=tmle.out,Onestep=onestep.out))}
-  else if (onestep==F){return(TMLE=tmle.out)}
 }
