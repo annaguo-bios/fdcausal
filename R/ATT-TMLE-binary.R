@@ -77,8 +77,8 @@ ATT.TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
   data_A1 = data.frame(M, A=1, X)
   data_A0 = data.frame(M, A=0, X)
 
-  data_MAX = data.frame(Y=Y,M=M,A=A,X)
-  data_MaX = data.frame(Y=Y,M,A=a,X)
+  data_MAX = data.frame(M=M,A=A,X)
+  data_MaX = data.frame(M,A=a,X)
   data_A1M1 = data.frame(M=1,A=1, X)
   data_A1M0 = data.frame(M=0,A=1, X)
   data_A0M1 = data.frame(M=1,A=0, X)

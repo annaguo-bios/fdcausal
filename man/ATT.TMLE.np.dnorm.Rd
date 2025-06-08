@@ -11,7 +11,6 @@ ATT.TMLE.np.dnorm(
   mediator = "M",
   outcome = "Y",
   covariates = c("X1", "X2", "X3"),
-  onestep = T,
   n.iter = 500,
   eps = T,
   cvg.criteria = 0.01,
@@ -19,7 +18,8 @@ ATT.TMLE.np.dnorm(
   formulaA = "A ~ .",
   linkA = "logit",
   truncate_lower = 0,
-  truncate_upper = 1
+  truncate_upper = 1,
+  estimator = "onestep"
 )
 }
 \arguments{
@@ -34,8 +34,6 @@ ATT.TMLE.np.dnorm(
 \item{outcome}{Variable name for the continuous univariate outcome}
 
 \item{covariates}{Variable name for the measured confounders}
-
-\item{onestep}{A logical indicator determines whether one-step estimation is executed. When 'onestep=T', the one-step estimation result is provided. Conversely, if 'onestep=F', the result is withheld.}
 
 \item{n.iter}{The maximum number of iterations performed when iteratively updating the mediator density and propensity score.}
 
@@ -54,6 +52,8 @@ Conversely, adoption of 'eps=T' usually requires less time but can result in alg
 \item{truncate_lower}{A numeric variable, setting lower bound for the truncated propensity score. The default is 0.}
 
 \item{truncate_upper}{A numeric variable, setting upper bound for the truncated propensity score. The default is 1.}
+
+\item{estimator}{A character string indicating which estimator is to be used. The default is c('onestep','tmle'), which returns both one-step estimator and TMLE. Other options are "onestep" and "tmle".}
 }
 \value{
 Function outputs a list containing TMLE output (and Onestep estimator output if 'onestep=T' is specified):

@@ -31,14 +31,14 @@ To install the package from GitHub:
 
 ```R
 install.packages("remotes") # If you have not installed "remotes" package
-remotes::install_github("annaguo-bios/fdtmle")
+remotes::install_github("annaguo-bios/fdcausal")
 ```
-The source code for **fdtmle** package is available on GitHub at [fdtmle](https://github.com/annaguo-bios/fdtmle/tree/main).
+The source code for **fdcausal** package is available on GitHub at [fdcausal](https://github.com/annaguo-bios/fdcausal/tree/main).
 
 
 ### Description 
 
-The **fdtmle** package offers a `TMLE()` function, providing both one-step estimates and TMLEs of the average causal effect. The package is designed to specialize in estimation when $A$ is a univariate binary variable and $Y$ is a univariate variable, which can be either continuous or binary. Additionally, $X$ and $M$ have the flexibility to be either univariate or multivariate, accommodating a wide range of variable types.  
+The **fdcausal** package offers a `TMLE()` function, providing both one-step estimates and TMLEs of the average causal effect. The package is designed to specialize in estimation when $A$ is a univariate binary variable and $Y$ is a univariate variable, which can be either continuous or binary. Additionally, $X$ and $M$ have the flexibility to be either univariate or multivariate, accommodating a wide range of variable types.  
 
 The package also comes with three default datasets called `continuousY_continuousM`, `continuousY_continuousM_10dX`, and `boinaryY_bianryM`, which we have used to illustrate the use of the `TMLE()` function throughout this brief tutotrial. For details of the underlying DGPs, see Section 4.  
 
@@ -60,7 +60,7 @@ The `TMLE()` function comes with multiple different arguments that primarily det
 
 ## <a id="Detailed"></a>2. Detailed Discussion on Implementation
 
-The front-door ID functional encompasses four nuisance functionals: **the outcome regression** $E(Y\mid M,A,X)$, the **propensity score** $p(A\mid X)$, the **mediator density** $p(M\mid A,X)$, and the marginal distribution of measured confounder(s) $p(X)$. Let $Q$ denote the collection of the four nuisance functionals: $Q=\{E(Y\mid M,A,X),p(A\mid X),p(M\mid A,X),p(X)\}$. The **fdtmle** package offers multiple ways for estimating the nuisance functionals, as discussed in the following. 
+The front-door ID functional encompasses four nuisance functionals: **the outcome regression** $E(Y\mid M,A,X)$, the **propensity score** $p(A\mid X)$, the **mediator density** $p(M\mid A,X)$, and the marginal distribution of measured confounder(s) $p(X)$. Let $Q$ denote the collection of the four nuisance functionals: $Q=\{E(Y\mid M,A,X),p(A\mid X),p(M\mid A,X),p(X)\}$. The **fdcausal** package offers multiple ways for estimating the nuisance functionals, as discussed in the following. 
 
 ### <a id="Nuisance"></a>2.1 Nuisance estimation 
 
@@ -76,7 +76,7 @@ The front-door ID functional encompasses four nuisance functionals: **the outcom
 
 where `a=1` returns estimation results for $E(Y^1)$.  <br/>
 
-- <span style="color:red;">**Super learner**</span>: use argument `superlearner=T` in the `TMLE()` function to estimate nuisance functionals with the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package. The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation scheme. The default algorithms used for superlearner in the **fdtmle** package are `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users, however, can specify any algorithms incorporated in the **SuperLearner** package.  <br/>
+- <span style="color:red;">**Super learner**</span>: use argument `superlearner=T` in the `TMLE()` function to estimate nuisance functionals with the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package. The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation scheme. The default algorithms used for superlearner in the **fdcausal** package are `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users, however, can specify any algorithms incorporated in the **SuperLearner** package.  <br/>
 
 -  <span style="color:red;">**Cross-fitting with super learner**</span>: use the `crossfit=T` argument in the `TMLE()` function to estimate nuisance functionals using cross-fitting in conjuction with the use of a super learner. More specifically, data are partitioned into $K$ non-overlapping subsets of approximately equal size. For observations in each fold, prediction is made using super learner trained using observations excluding those in the current fold. Predictions for each fold is then combined to form the nuisance estimates for all observations. By adopting cross-fitting, the Donsker conditions are relaxed for achieving asympotical linearity of the estimators. The number of folds can be adjusted using the argument `K` with the default being set to $K=5$. As an example, the following code implements the ACE estimation using random forest combined with cross-fitting of $2$ folds.
 

@@ -11,7 +11,6 @@ ATT.TMLE.binary(
   mediator,
   outcome,
   covariates,
-  onestep = TRUE,
   superlearner = TRUE,
   crossfit = FALSE,
   K = 5,
@@ -25,7 +24,9 @@ ATT.TMLE.binary(
   linkA = "logit",
   linkM_binary = "logit",
   truncate_lower = 0,
-  truncate_upper = 1
+  truncate_upper = 1,
+  estimator = "onestep",
+  boundedsubmodelY = F
 )
 }
 \arguments{
@@ -40,9 +41,6 @@ ATT.TMLE.binary(
 \item{outcome}{Variable name for the continuous univariate outcome}
 
 \item{covariates}{Variable name for the measured confounders}
-
-\item{onestep}{A logical indicator determines whether one-step estimation is executed. When 'onestep=T', the one-step estimation result is provided.
-Conversely, if 'onestep=F', the result is withheld.}
 
 \item{superlearner}{A logical indicator determines whether SuperLearner is adopted for estimating the outcome regression, mediator density, and the propensity score.}
 
@@ -71,11 +69,15 @@ Conversely, if 'onestep=F', the result is withheld.}
 \item{truncate_lower}{A numeric variable, setting lower bound for the truncated propensity score. The default is 0.}
 
 \item{truncate_upper}{A numeric variable, setting upper bound for the truncated propensity score. The default is 1.}
+
+\item{estimator}{A character string indicating which estimator is to be used. The options are "onestep" and "tmle".}
+
+\item{boundedsubmodelY}{An indicator for whether the bounded submodel is used for targeting the outcome regression when Z is discrete. The default is FALSE.}
 }
 \value{
 a list of initialization of matrices.
 
-Function outputs a list containing TMLE output (and Onestep estimator output if 'onestep=T' is specified):
+Function outputs a list containing TMLE/onestep output:
 \describe{
       \item{\code{estimated_psi}}{The estimated parameter of interest: \eqn{E(Y^a|1-a)}}
       \item{\code{lower.ci}}{Lower bound of the 95\% confidence interval for \code{estimated_psi}}

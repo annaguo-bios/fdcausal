@@ -48,6 +48,8 @@ NULL
 #' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 0.99.
 #' @param np.dnorm A logic variable. If np.dnorm=T, p(M|A,X) is directly estimated assuming normal distribution. If np.dnorm=F, p(M|A,X) is directly estimated using the \link[np]{npcdens} function.
 #' @param ATT A logic variable. If ATT=T, the function estimates the Average Treatment Effect on the Treated (ATT). If ATT=F, the function estimates the Average Treatment Effect (ATE). ATT=F by default.
+#' @param estimator A character string indicating which estimator is to be used. The options are "onestep" and "tmle".
+#' @param boundedsubmodelY An indicator for whether the bounded submodel is used for targeting the outcome regression when Z is discrete. The default is FALSE.
 #' @return Function outputs a list containing TMLE results (and Onestep results if 'onestep=T' is specified). When 'a=c(1,0)', function also outputs corresponding results on \eqn{E(Y^1)} and \eqn{E(Y^1)}:
 #' \describe{
 #'       \item{\code{ATE}}{The estimated Average Causal Effect: \eqn{E(Y^1)-E(Y^0)}}

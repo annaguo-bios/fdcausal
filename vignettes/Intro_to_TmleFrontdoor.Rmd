@@ -14,7 +14,7 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE)
-library(fdtmle)
+library(fdcausal)
 library(SuperLearner)
 ```
 
@@ -26,7 +26,7 @@ A front-door model can be depicted in the following Directed Acyclic Graph (DAG)
 
 <img src="frontdoor.png" alt="The front-door DAG with unmeasured confounders $U$ between $A$ and $Y$" style="width:50%;" />
 
-In summary, the **fdtmle** package offers a `TMLE()` function, providing both TMLE estimates and One-step estimates of the Average Causal Effect (ACE). The package is designed to specialize in estimation when $A$ is a univariate binary variable and $Y$ is a univariate variable, which can be either continuous or binary. Additionally, $X$ and $M$ have the flexibility to be either univariate or multivariate, accommodating a wide range of variable types.
+In summary, the **fdcausal** package offers a `TMLE()` function, providing both TMLE estimates and One-step estimates of the Average Causal Effect (ACE). The package is designed to specialize in estimation when $A$ is a univariate binary variable and $Y$ is a univariate variable, which can be either continuous or binary. Additionally, $X$ and $M$ have the flexibility to be either univariate or multivariate, accommodating a wide range of variable types.
 
 As a quick example, the package comes with a dataset called `continuousY_continuousM` that looks like the following:
 
@@ -96,17 +96,17 @@ In the above code, `a=c(1,0)` specifies estimating ACE, contrasting treatment le
 <!-- You can install the **TmleFrontdoor** package from [CRAN](xxx). -->
 
 ```{r eval=FALSE}
-install.packages("fdtmle")
+install.packages("fdcausal")
 ```
 
 <!-- You can also install the package from [GitHub](xxx). -->
 
 ```{r eval=FALSE}
 install.packages("remotes") # If you have not installed "remotes" package
-remotes::install_github("annaguo-bios/fdtmle")
+remotes::install_github("annaguo-bios/fdcausal")
 ```
 
-The source code for **fdtmle** package is available on GitHub at
+The source code for **fdcausal** package is available on GitHub at
 
 ## 3. Estimators
 For a detailed discussion of the estimators, we refer readers to [Guo et al. 2023].
@@ -199,7 +199,7 @@ bYbM<- TMLE(a=1,data=binaryY_binaryM,
 ```
 
 
-- <span style="color:red;">**Super learner**</span>: use argument `superlearner=T` in the `TMLE()` function to estimate nuisance functionals with [SuperLearner](https://cran.r-project.org/package=SuperLearner). The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation. The default algorithms used for superlearner in **fdtmle** package is `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users can specify any algorithms incorporated in the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package.
+- <span style="color:red;">**Super learner**</span>: use argument `superlearner=T` in the `TMLE()` function to estimate nuisance functionals with [SuperLearner](https://cran.r-project.org/package=SuperLearner). The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation. The default algorithms used for superlearner in **fdcausal** package is `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users can specify any algorithms incorporated in the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package.
 
 
 

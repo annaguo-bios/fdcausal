@@ -11,7 +11,6 @@ TMLE(
   mediators,
   outcome,
   covariates,
-  onestep = T,
   mediator.method = "bayes",
   np.dnorm = T,
   superlearner = F,
@@ -29,9 +28,11 @@ TMLE(
   linkM_binary = "logit",
   formula_bayes = "A ~ .",
   link_bayes = "logit",
-  truncate_lower = 0,
-  truncate_upper = 1,
-  ATT = F
+  truncate_lower = 0.01,
+  truncate_upper = 0.99,
+  ATT = F,
+  estimator = "onestep",
+  boundedsubmodelY = F
 )
 }
 \arguments{
@@ -46,8 +47,6 @@ TMLE(
 \item{outcome}{Variable name for the continuous univariate outcome}
 
 \item{covariates}{Variable name for the measured confounders}
-
-\item{onestep}{A logical indicator determines whether one-step estimation is executed. When 'onestep=T', the one-step estimation result is provided. Conversely, if 'onestep=F', the result is withheld.}
 
 \item{mediator.method}{When M is univariate binary, regression is adopted for estimating \eqn{p(M|A,X)}. Otherwise, four methods for mediator density estimation is provided, namely "bayes", "densratio", "dnorm", and "np".
 The "bayes" method estimates the density ratio \eqn{p(M|A,X)/p(M|a,X)} by rewriting it as \eqn{(p(a|M,X)/p(A|M,X))/(p(a|X)/p(A|X))}, where p(A|M,X) is then estimated via regression. TMLE estimators using 'bayes' method avoids updating the mediator density p(M|A,X).
@@ -94,11 +93,17 @@ The default value is 0.01, meaning update stops when stopping criteria < 0.01. T
 
 \item{link_bayes}{The link function used for the logistic regression of A on M and X. The default is 'logit' link. This parameter is only needed when mediator.method="bayes".}
 
-\item{truncate_lower}{A numeric variable, setting lower bound for the truncated propensity score. The default is 0.}
+\item{truncate_lower}{A numeric variable, setting lower bound for the truncated propensity score. The default is 0.01.}
 
-\item{truncate_upper}{A numeric variable, setting upper bound for the truncated propensity score. The default is 1.}
+\item{truncate_upper}{A numeric variable, setting upper bound for the truncated propensity score. The default is 0.99.}
 
 \item{ATT}{A logic variable. If ATT=T, the function estimates the Average Treatment Effect on the Treated (ATT). If ATT=F, the function estimates the Average Treatment Effect (ATE). ATT=F by default.}
+
+\item{estimator}{A character string indicating which estimator is to be used. The options are "onestep" and "tmle".}
+
+\item{boundedsubmodelY}{An indicator for whether the bounded submodel is used for targeting the outcome regression when Z is discrete. The default is FALSE.}
+
+\item{onestep}{A logical indicator determines whether one-step estimation is executed. When 'onestep=T', the one-step estimation result is provided. Conversely, if 'onestep=F', the result is withheld.}
 }
 \value{
 Function outputs a list containing TMLE results (and Onestep results if 'onestep=T' is specified). When 'a=c(1,0)', function also outputs corresponding results on \eqn{E(Y^1)} and \eqn{E(Y^1)}:
@@ -129,21 +134,21 @@ Function for average counterfactual outcome E(Y(a)) and average causal effect (A
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=binaryY_binaryM,
 treatment="A", mediators="M", outcome="Y", covariates="X",
- onestep=TRUE, linkA="identity",ATT=TRUE)
+  linkA="identity",ATT=TRUE)
 
 # ATE estimation. For binary outcome Y and binary mediator M.
 # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=binaryY_binaryM,
 treatment="A", mediators="M", outcome="Y", covariates="X",
- onestep=TRUE, linkA="identity")
+  linkA="identity")
 
 # ATE estimation. For continuous outcome Y and binary mediator M
 # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=continuousY_binaryM,
 treatment="A", mediators="M", outcome="Y",
-covariates="X", onestep=TRUE, linkA="identity")
+covariates="X",  linkA="identity")
 
 # ATE estimation. For continuous outcome Y and binary mediator M.
 # Data is generated under p(A=1|X) = 0.001 + 0.998X. And X~Uniform(0,1).
@@ -151,7 +156,7 @@ covariates="X", onestep=TRUE, linkA="identity")
 # Below we apply truncation to the propensity score to truncate it between (0.001, 0.999).
 res <- TMLE(a=c(1,0),data=continuousY_binaryM_weakoverlap,
 treatment="A", mediators="M", outcome="Y", covariates="X",
-onestep=TRUE, linkA="identity", truncate_lower=0.001, truncate_upper=0.999)
+ linkA="identity", truncate_lower=0.001, truncate_upper=0.999)
 
 # ATE estimation. For continuous outcome Y and univariate continuous mediator M.
 # Using 'np' method for mediator density estimation.
@@ -160,7 +165,7 @@ onestep=TRUE, linkA="identity", truncate_lower=0.001, truncate_upper=0.999)
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=continuousY_continuousM,
 treatment="A", mediators="M", outcome="Y", covariates="X",
-onestep=TRUE, linkA="identity", mediator.method="np", np.dnorm=FALSE)
+ linkA="identity", mediator.method="np", np.dnorm=FALSE)
 
 # ATE estimation. For continuous outcome Y and univariate continuous mediator M.
 # Using 'np' method for mediator density estimation.
@@ -169,7 +174,7 @@ onestep=TRUE, linkA="identity", mediator.method="np", np.dnorm=FALSE)
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=continuousY_continuousM,
 treatment="A", mediators="M", outcome="Y", covariates="X",
-onestep=TRUE, linkA="identity", mediator.method="np", np.dnorm=TRUE)
+ linkA="identity", mediator.method="np", np.dnorm=TRUE)
 
 # ATE estimation. For continuous outcome Y and univariate continuous mediator M.
 # Using 'densratio' method for mediator density ratio estimation.
@@ -178,7 +183,7 @@ onestep=TRUE, linkA="identity", mediator.method="np", np.dnorm=TRUE)
 # Below we apply truncation to the propensity score to truncate it between (0.001, 0.999).
 res <-TMLE(a=c(1,0),data=continuousY_continuousM_weakoverlap,
 treatment="A", mediators="M", outcome="Y", covariates="X",
-onestep=TRUE, linkA="identity", mediator.method="densratio",
+ linkA="identity", mediator.method="densratio",
 truncate_lower=0.001, truncate_upper=0.999)
 
 # ATE estimation. For continuous outcome Y and bivariate mediator M.
@@ -187,7 +192,7 @@ truncate_lower=0.001, truncate_upper=0.999)
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=continuousY_bivariateM,
 treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
- onestep=TRUE, linkA="identity", mediator.method="densratio")
+  linkA="identity", mediator.method="densratio")
 
 # ATE estimation. For continuous outcome Y and bivariate mediator M.
 # Using 'bayes' method for mediator density ratio estimation.
@@ -195,7 +200,7 @@ treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=continuousY_bivariateM,
 treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
- onestep=TRUE, linkA="identity", mediator.method="bayes")
+  linkA="identity", mediator.method="bayes")
 
 # ATE estimation. For continuous outcome Y and bivariate mediator M.
 # Using 'dnorm' method for mediator density ratio estimation.
@@ -203,7 +208,7 @@ treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=continuousY_bivariateM,treatment="A",
 mediators=c("M.1","M.2"), outcome="Y", covariates="X",
-onestep=TRUE, linkA="identity", mediator.method="dnorm")
+ linkA="identity", mediator.method="dnorm")
 
 # ATE estimation. For continuous outcome Y and quadrivariate mediator M.
 # Using 'densratio' method for mediator density ratio estimation.
@@ -211,7 +216,7 @@ onestep=TRUE, linkA="identity", mediator.method="dnorm")
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=continuousY_quadrivariateM,treatment="A",
 mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X",
-onestep=TRUE, linkA="identity", mediator.method="densratio")
+ linkA="identity", mediator.method="densratio")
 
 # ATE estimation. For continuous outcome Y and quadrivariate mediator M.
 # Using 'bayes' method for mediator density ratio estimation.
@@ -219,7 +224,7 @@ onestep=TRUE, linkA="identity", mediator.method="densratio")
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=continuousY_quadrivariateM,
 treatment="A", mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X",
- onestep=TRUE, linkA="identity", mediator.method="bayes")
+  linkA="identity", mediator.method="bayes")
 
 # ATE estimation. For continuous outcome Y and quadrivariate mediator M.
 # Using 'dnorm' method for mediator density ratio estimation.
@@ -227,7 +232,7 @@ treatment="A", mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X"
 # Therefore, setting link for propensity score to be "identity".
 res <-TMLE(a=c(1,0),data=continuousY_quadrivariateM,
 treatment="A", mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X",
- onestep=TRUE, linkA="identity", mediator.method="dnorm")
+  linkA="identity", mediator.method="dnorm")
 }
 
 }

@@ -11,7 +11,6 @@ TMLE.binary(
   mediator,
   outcome,
   covariates,
-  onestep = TRUE,
   superlearner = TRUE,
   crossfit = FALSE,
   K = 5,
@@ -24,8 +23,10 @@ TMLE.binary(
   linkY_binary = "logit",
   linkA = "logit",
   linkM_binary = "logit",
-  truncate_lower = 0,
-  truncate_upper = 1
+  truncate_lower = 0.01,
+  truncate_upper = 0.99,
+  estimator = "onestep",
+  boundedsubmodelY = F
 )
 }
 \arguments{
@@ -40,9 +41,6 @@ TMLE.binary(
 \item{outcome}{Variable name for the continuous univariate outcome}
 
 \item{covariates}{Variable name for the measured confounders}
-
-\item{onestep}{A logical indicator determines whether one-step estimation is executed. When 'onestep=T', the one-step estimation result is provided.
-Conversely, if 'onestep=F', the result is withheld.}
 
 \item{superlearner}{A logical indicator determines whether SuperLearner is adopted for estimating the outcome regression, mediator density, and the propensity score.}
 
@@ -68,9 +66,13 @@ Conversely, if 'onestep=F', the result is withheld.}
 
 \item{linkM_binary}{The link function used for the logistic regression of M on A and X. The default is the 'logit' link. This parameter is only needed when M is a univariate binary mediator.}
 
-\item{truncate_lower}{A numeric variable, setting lower bound for the truncated propensity score. The default is 0.}
+\item{truncate_lower}{A numeric variable, setting lower bound for the truncated propensity score. The default is 0.01.}
 
-\item{truncate_upper}{A numeric variable, setting upper bound for the truncated propensity score. The default is 1.}
+\item{truncate_upper}{A numeric variable, setting upper bound for the truncated propensity score. The default is 0.99.}
+
+\item{estimator}{A character string indicating which estimator is to be used. The options are "onestep" and "tmle".}
+
+\item{boundedsubmodelY}{An indicator for whether the bounded submodel is used for targeting the outcome regression when Z is discrete. The default is FALSE.}
 }
 \value{
 a list of initialization of matrices.

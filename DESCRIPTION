@@ -1,11 +1,11 @@
-Package: fdtmle
+Package: fdcausal
 Type: Package
-Title: Targeted Minimum Loss Based Estimation for Frontdoor Model
+Title: Flexible Nonparametric Estimation Methods of Causal Effects under the Front-Door Model
 Version: 0.1.0
 Date: 2023-10-24
 Author: Anna Guo, David Benkeser, Razieh Nabi
 Maintainer: Anna Guo <guo.anna617@gmail.com>
-Description: Targeted Minimum Loss Based Estimation for Frontdoor Model, supporting binary treatment, univariate outcome, and all types of mediators.
+Description: Flexible nonparametric estimation methods of causal effects, including one-step estimators and TMLEs, under the front-door model, supporting binary treatment, univariate outcome, and all types of mediators.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

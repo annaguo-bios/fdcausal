@@ -39,6 +39,7 @@
 #' @param np.dnorm A logic variable. If np.dnorm=T, p(M|A,X) is directly estimated assuming normal distribution. If np.dnorm=F, p(M|A,X) is directly estimated using the \link[np]{npcdens} function.
 #' @param estimator A character string indicating which estimator is to be used. The options are "onestep" and "tmle".
 #' @param boundedsubmodelY An indicator for whether the bounded submodel is used for targeting the outcome regression when Z is discrete. The default is FALSE.
+#' @param print.message A logical indicator determines whether to print the detailed message. The default is TRUE.
 #' @return Function outputs a list containing TMLE results (and Onestep results if 'onestep=T' is specified):
 #' \describe{
 #'       \item{\code{estimated_psi}}{The estimated parameter of interest: \eqn{E(Y^a)}}
