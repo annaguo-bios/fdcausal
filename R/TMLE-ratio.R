@@ -83,9 +83,9 @@ TMLE.ratio <- function(a,data,treatment, mediators, outcome, covariates,
   dat_MaX <- data.frame(Y=Y,M,A=a,X)
 
   # new data sets
-  data_Aa = data.frame(M, A=A, X)
-  data_A1 = data.frame(M, A=1, X)
-  data_A0 = data.frame(M, A=0, X)
+  data_Aa = data.frame(Y=Y,M, A=A, X)
+  data_A1 = data.frame(Y=Y,M, A=1, X)
+  data_A0 = data.frame(Y=Y,M, A=0, X)
 
   ##################################################################
   ## TMLE initialization for sequential regression based estimator
