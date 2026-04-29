@@ -15,10 +15,10 @@ If you find this package useful, please cite:
 
 The front-door setting involves:
 
--   `A`: treatment (binary)\
--   `M`: mediator(s)\
--   `Y`: outcome\
--   `X`: observed confounder(s)\
+-   `A`: treatment (binary)
+-   `M`: mediator(s)
+-   `Y`: outcome
+-   `X`: observed confounder(s)
 -   `U`: unobserved confounder(s)
 
 <img src="frontdoor.png" alt="The front-door DAG with unmeasured confounders $U$ between $A$ and $Y$" style="width:50%;"/>
@@ -93,9 +93,9 @@ For example:
 
 where `a=1` returns estimation results for $E(Y^1)$. <br/>
 
--   [**Super learner**]{style="color:red;"}: use argument `superlearner=T` in the `estfd()` function to estimate nuisance functionals with the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package. The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation scheme. The default algorithms used for superlearner in the **fdcausal** package are `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users, however, can specify any algorithms incorporated in the **SuperLearner** package. <br/>
+-   <span style="color:red;"><strong>Super Learner</strong></span>: use argument `superlearner=T` in the `estfd()` function to estimate nuisance functionals with the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package. The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation scheme. The default algorithms used for superlearner in the **fdcausal** package are `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users, however, can specify any algorithms incorporated in the **SuperLearner** package. <br/>
 
--   [**Cross-fitting with super learner**]{style="color:red;"}: use the `crossfit=T` argument in the `estfd()` function to estimate nuisance functionals using cross-fitting in conjunction with the use of a super learner. The number of folds can be adjusted using the argument `K` with the default being set to $K=5$. As an example, the following code runs ATE estimation using random forest combined with cross-fitting of $2$ folds.
+-   <span style="color:red;"><strong>Cross-fitting with Super Learner</strong></span>: use the `crossfit=T` argument in the `estfd()` function to estimate nuisance functionals using cross-fitting in conjunction with the use of a super learner. The number of folds can be adjusted using the argument `K` with the default being set to $K=5$. As an example, the following code runs ATE estimation using random forest combined with cross-fitting of $2$ folds.
 
 ``` r
 cYcM <- estfd(a=c(1,0), data=continuousY_continuousM_10dX,
@@ -107,18 +107,17 @@ cYcM <- estfd(a=c(1,0), data=continuousY_continuousM_10dX,
 
 This package incorporates different estimation schemes tailored to various types of mediators. As mentioned above, $f_M(M\mid A,X)$ is estimated via logistic regression under a binary mediator $M$. Different estimation strategies would be needed to handle other types of mediators, due to the complexity of (conditional) density estimations. We offer four different options to deal with the complexity of mediator density estimation. The choice can be controlled by argument `mediator.method`.
 
--   [`mediator.method=np`]{style="color:red;"}: This method corresponds to direct estimation and targeting of the *mediator density*. When `np.dnorm=F`, $f_M(M\mid A,X)$ is estimated using the nonparametric kernel method via the [np](https://cran.r-project.org/web/packages/np/index.html) package. When `np.dnorm=T`, $f_M(M\mid A,X)$ is estimated assuming normal distribution. The mean of the normal distribution is estimated via the regression of $M$ on $A$ and $X$, and the standard deviation of the normal distribution is estimated via the sample standard devation of the error term in the regression. Given the computational burden imposed by direct estimation of the mediator density, this `np` method is only applicable to univariate continuous mediator.
+-   <span style="color:red;"><code>mediator.method=np</code></span>: This method corresponds to direct estimation and targeting of the *mediator density*. When `np.dnorm=F`, $f_M(M\mid A,X)$ is estimated using the nonparametric kernel method via the [np](https://cran.r-project.org/web/packages/np/index.html) package. When `np.dnorm=T`, $f_M(M\mid A,X)$ is estimated assuming normal distribution. The mean of the normal distribution is estimated via the regression of $M$ on $A$ and $X$, and the standard deviation of the normal distribution is estimated via the sample standard devation of the error term in the regression. Given the computational burden imposed by direct estimation of the mediator density, this `np` method is only applicable to univariate continuous mediator.
 
--   [`mediator.method=densratio`]{style="color:red;"}: This method circumvents direct estimation of the mediator density by estimating its ratio $f_M(M\mid A=a_0,X)/f_M(M\mid A,X)$ instead, where $a_0$ is the treatment assignment of interest. For the *density ratio* estimation we use the [densratio](https://cran.r-project.org/web/packages/densratio/index.html) package.
+-   <span style="color:red;"><code>mediator.method=densratio</code></span>: This method circumvents direct estimation of the mediator density by estimating its ratio $f_M(M\mid A=a_0,X)/f_M(M\mid A,X)$ instead, where $a_0$ is the treatment assignment of interest. For the *density ratio* estimation we use the [densratio](https://cran.r-project.org/web/packages/densratio/index.html) package.
 
--   [`mediator.method=bayes`]{style="color:red;"}: This method estimates *density ratio* $f_M(M\mid A=a,X)/f_M(M\mid A,X)$ by reformulating it using the Bayes' rule as follows:
+-   <span style="color:red;"><code>mediator.method=bayes</code></span>: This method estimates *density ratio* $f_M(M\mid A=a,X)/f_M(M\mid A,X)$ by reformulating it using the Bayes' rule as follows:
 
     $$\frac{f_M(M\mid A=a,X)}{f_M(M\mid A,X)} = \frac{p(a_0 \mid X, M)}{p(A \mid X, M)} \times \frac{\pi(A \mid X)}{\pi(a_0 \mid X)}.$$
 
     The density ratio is estimated via estimating $p(A \mid X, M)$ and $\pi(A\mid X)$. $p(A \mid X, M)$ can be estimated via super learner, cross-fitting in conjunction with super learner, or logistic regression. When using logistic regression, `formula_bayes` and `link_bayes` arguments in `estfd()` allow users to specify the formula and link function used in the logistic regression.
 
--   [`mediator.method=dnorm`]{style="color:red;"}: This method estimates *density ratio*, assuming that $M\mid A,X$ follows conditional normal distribution. The mean and standard deviation of the normal distribution are estimated using the same strategy as discussed in the `mediator.method=np` part. Estimates of the density ratio is then constructed as the ratio of the density estimates.
-
+-   <span style="color:red;"><code>mediator.method=dnorm</code></span>: This method estimates *density ratio*, assuming that $M\mid A,X$ follows conditional normal distribution. The mean and standard deviation of the normal distribution are estimated using the same strategy as discussed in the `mediator.method=np` part. Estimates of the density ratio is then constructed as the ratio of the density estimates.
 **Summary:** The `np` method allows estimation under univariate continuous mediator, while the `densratio, bayes, dnorm` methods work for both univariate and multivariate mediators. The mediators can be binary, continuous, or a mix. The `np` method involves direct estimation of the mediator density, and the targeting step of the TMLE would require iterative updates between the outcome regression, propensity score, and mediator density. Consequently, this method is computationally more intensive. The TMLE procedure under `densratio, bayes, dnorm` does not require iterative updates among the nuisance functionals. Therefore, those methods are more computationally efficient and are especially appealing in settings with multivariate mediators.
 
 ## <a id="References"></a>3. Output
