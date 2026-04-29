@@ -24,7 +24,7 @@
 #' @param boundedsubmodelY An indicator for whether the bounded submodel is used for targeting the outcome regression when Z is discrete. The default is FALSE.
 #' @return a list of initialization of matrices.
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' ATT.TMLE.binary(a=1,data=continuousY_binaryM,
 #' treatment="A", mediator="M", outcome="Y", covariates="X")
 #' }
@@ -46,7 +46,6 @@
 #'       \item{\code{eps.M_vec}}{A vector containing the index for submodels of the mediator density over iterations. This is useful for checking the convergence behavior of the mediator density. It's expected to be close to 0 when convergence is achieved.}
 #'       \item{\code{eps.Y_vec}}{A vector containing the index for submodels of the propensity score over iterations. This is useful for checking the convergence behavior of the propensity score. It's expected to be close to 0 when convergence is achieved.}
 #'       \item{\code{iter}}{Number of iterations where convergence is achieved for the iterative update of the mediator density and propensity score.}}
-#' @export
 #'
 
 ATT.TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
@@ -383,6 +382,7 @@ ATT.TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,
 
         ## clever coefficient for M|A=a,X
         clever_coef.M = {1/p.alt}*ratio.A.X*(or_pred_altm1_updated-or_pred_altm0_updated)
+        m_weight <- (A==a)*clever_coef.M # I(A=a)/p(a') * p(a'|X)/p(a|X) * E(Y|M=1,A=a',X) - E(Y|M=0,A=a',X)
 
         # offset term for M|A=a,X
         offset.M <- qlogis(p.m1.aX_updated)

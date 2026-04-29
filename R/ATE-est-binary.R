@@ -24,7 +24,7 @@
 #' @param boundedsubmodelY An indicator for whether the bounded submodel is used for targeting the outcome regression when Z is discrete. The default is FALSE.
 #' @return a list of initialization of matrices.
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' res <- TMLE.binary(a=1,data=continuousY_binaryM,
 #' treatment="A", mediator="M", outcome="Y", covariates="X")
 #' }
@@ -46,7 +46,6 @@
 #'       \item{\code{eps2_vec}}{A vector containing the index for submodels of the mediator density over iterations. This is useful for checking the convergence behavior of the mediator density. It's expected to be close to 0 when convergence is achieved.}
 #'       \item{\code{eps3_vec}}{A vector containing the index for submodels of the propensity score over iterations. This is useful for checking the convergence behavior of the propensity score. It's expected to be close to 0 when convergence is achieved.}
 #'       \item{\code{iter}}{Number of iterations where convergence is achieved for the iterative update of the mediator density and propensity score.}}
-#' @export
 #'
 
 TMLE.binary <- function(a,data,treatment, mediator, outcome, covariates,

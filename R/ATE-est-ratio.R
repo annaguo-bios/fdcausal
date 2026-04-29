@@ -57,7 +57,6 @@
 #' @import np densratio SuperLearner mvtnorm stats
 #' @importFrom dplyr %>% mutate select
 #' @importFrom MASS mvrnorm
-#' @export
 #'
 #'
 TMLE.ratio <- function(a,data,treatment, mediators, outcome, covariates,

@@ -26,7 +26,7 @@ A front-door model can be depicted in the following Directed Acyclic Graph (DAG)
 
 <img src="frontdoor.png" alt="The front-door DAG with unmeasured confounders $U$ between $A$ and $Y$" style="width:50%;" />
 
-In summary, the **fdcausal** package offers a `TMLE()` function, providing both TMLE estimates and One-step estimates of the Average Causal Effect (ACE). The package is designed to specialize in estimation when $A$ is a univariate binary variable and $Y$ is a univariate variable, which can be either continuous or binary. Additionally, $X$ and $M$ have the flexibility to be either univariate or multivariate, accommodating a wide range of variable types.
+In summary, the **fdcausal** package offers a `estfd()` function, providing both TMLE estimates and One-step estimates of the Average Causal Effect (ACE). The package is designed to specialize in estimation when $A$ is a univariate binary variable and $Y$ is a univariate variable, which can be either continuous or binary. Additionally, $X$ and $M$ have the flexibility to be either univariate or multivariate, accommodating a wide range of variable types.
 
 As a quick example, the package comes with a dataset called `continuousY_continuousM` that looks like the following:
 
@@ -78,13 +78,13 @@ generate_data <- function(n,parA = c(0.3,0.2), parU=c(1,1,1,0), parM = c(1,1,1,0
 continuousY_continuousM <- generate_data(500)$data
 ```
 
-The ACE $E(Y^1)-E(Y^0)$ can be estimated via the `TMLE()` function as follows:
+The ACE $E(Y^1)-E(Y^0)$ can be estimated via the `estfd()` function as follows:
 
 ```{r}
 
 # linkA specifies using "identity" link for fitting the logistic regression of A on X.
 
-cYcM <- TMLE(a=c(1,0),data=continuousY_continuousM,
+cYcM <- estfd(a=c(1,0),data=continuousY_continuousM,
              treatment="A", mediators="M", outcome="Y", covariates="X",
                       estimator='onestep', linkA="identity") 
 ```
@@ -192,25 +192,25 @@ str(binaryY_binaryM)
 Set $a=1$ returns estimation results on $E(Y^1)$.
 ```{r, eval=FALSE}
 # binary Y and binary M
-bYbM<- TMLE(a=1,data=binaryY_binaryM,
+bYbM<- estfd(a=1,data=binaryY_binaryM,
             treatment="A", mediators="M", outcome="Y", covariates="X",
             estimator='onestep',
            formulaY="Y ~ .", formulaA="A ~ .", formulaM="M~.", linkY_binary="logit", linkA="identity", linkM_binary="logit")
 ```
 
 
-- <span style="color:red;">**Super learner**</span>: use argument `superlearner=T` in the `TMLE()` function to estimate nuisance functionals with [SuperLearner](https://cran.r-project.org/package=SuperLearner). The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation. The default algorithms used for superlearner in **fdcausal** package is `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users can specify any algorithms incorporated in the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package.
+- <span style="color:red;">**Super learner**</span>: use argument `superlearner=T` in the `estfd()` function to estimate nuisance functionals with [SuperLearner](https://cran.r-project.org/package=SuperLearner). The SuperLearner is an ensemble algorithm that combines estimates from various statistical and machine learning models, creating a more adaptable and robust estimation. The default algorithms used for superlearner in **fdcausal** package is `c("SL.glm","SL.earth","SL.ranger","SL.mean")`. Users can specify any algorithms incorporated in the [SuperLearner](https://cran.r-project.org/package=SuperLearner) package.
 
 
 
-- <span style="color:red;">**Cross-fitting with super learner**</span>: use argument `crossfit=T` in `TMLE()` function to estimate nuisance functionals using cross-fitting in conjuction with super learner. More specifically, data are partitioned into K non-overlapping subsets of approximately equal size. For observations in each fold, prediction is made using super learner trained using observations excluding those in the current fold. Predictions for each fold is then combined to form the nuisance estimates for all observations. By adopting cross-fitting, the Donsker condition is no longer required for achieving asympotical linearity of the estimators. The number of folds can be adjusted using argument `K` with the default be `K=5`. 
+- <span style="color:red;">**Cross-fitting with super learner**</span>: use argument `crossfit=T` in `estfd()` function to estimate nuisance functionals using cross-fitting in conjuction with super learner. More specifically, data are partitioned into K non-overlapping subsets of approximately equal size. For observations in each fold, prediction is made using super learner trained using observations excluding those in the current fold. Predictions for each fold is then combined to form the nuisance estimates for all observations. By adopting cross-fitting, the Donsker condition is no longer required for achieving asympotical linearity of the estimators. The number of folds can be adjusted using argument `K` with the default be `K=5`. 
 
 As an example, the following code implements ACE estimation using random forest combined with cross-fitting of 2 folds.
 
 ```{r, eval=FALSE}
 set.seed(7)
 
-cYcM <- TMLE(a=c(1,0),data=continuousY_continuousM_10dX, treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
+cYcM <- estfd(a=c(1,0),data=continuousY_continuousM_10dX, treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
              estimator='onestep', crossfit = T, lib = c("SL.ranger"), K=2)
 
 ```
@@ -229,7 +229,7 @@ This package incorporates different estimation schemes tailored to various types
 
 - <span style="color:red;"> mediator.method=bayes </span>: This method estimate _density ratio_ $f_M(M\mid A=a,X)/f_M(M\mid A,X)$ by reformula it with the Bayes' Theorem as follows
 $$\frac{f_M(M\mid A=a,X)}{f_M(M\mid A,X)} = \frac{p(a_0 \mid X, M)}{p(A \mid X, M)} \times \frac{\pi(A \mid X)}{\pi(a_0 \mid X)}.$$
-The density ratio is estimated via estimating $p(A \mid X, M)$ and $\pi(A\mid X)$. $p(A \mid X, M)$ can be estimated via super learn, cross-fitting in conjunction with super learner, or logistic regression. When using logistic regression, `formula_bayes` and `link_bayes` arguments in `TMLE()` allow users to specify the formula and link function used in logistic regression.
+The density ratio is estimated via estimating $p(A \mid X, M)$ and $\pi(A\mid X)$. $p(A \mid X, M)$ can be estimated via super learn, cross-fitting in conjunction with super learner, or logistic regression. When using logistic regression, `formula_bayes` and `link_bayes` arguments in `estfd()` allow users to specify the formula and link function used in logistic regression.
   
 - <span style="color:red;"> mediator.method=dnorm </span>: This method estimate _density ratio_, assuming that $M\mid A,X$ follows conditional normal distribution. The mean and standard deviation of the normal distribution is estimated using the same strategy as discussed under `mediator.method=np`. Estimates of the density ratio is then constructed as the ratio of the normal density.
 
@@ -237,13 +237,13 @@ The density ratio is estimated via estimating $p(A \mid X, M)$ and $\pi(A\mid X)
 
 
 ### 5. Results
-The output of the `TMLE()` function depends on the `mediator.method` used. As an example, we use `mediator.method=np` to estimate the average counterfactual outcome $E(Y^1)$. The output is described as follows
+The output of the `estfd()` function depends on the `mediator.method` used. As an example, we use `mediator.method=np` to estimate the average counterfactual outcome $E(Y^1)$. The output is described as follows
 
 ```{r,eval=FALSE}
 set.seed(7)
 
 # Set a=1 returns estimation results on E(Y)
-cYcM <- TMLE(a=1,data=continuousY_continuousM, treatment="A", mediators="M", outcome="Y", covariates="X", 
+cYcM <- estfd(a=1,data=continuousY_continuousM, treatment="A", mediators="M", outcome="Y", covariates="X", 
              estimator=c('onestep','tmle'), mediator.method = "np")
 
 ## TMLE output ##
@@ -282,7 +282,7 @@ In the following, we use `mediator.method=bayes` to estimate ACE. The output is 
 ```{r, eval=FALSE}
 set.seed(7)
 
-cYcM <- TMLE(a=c(1,0),data=continuousY_continuousM_10dX, treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
+cYcM <- estfd(a=c(1,0),data=continuousY_continuousM_10dX, treatment="A", mediators="M", outcome="Y", covariates=paste0("X.",1:10), 
              estimator=c('onestep','tmle'), mediator.method = "bayes")
 
 ## TMLE output ##

@@ -55,7 +55,7 @@
 #'       \item{\code{eps3_vec}}{A vector containing the index for submodels of the propensity score over iterations. This is useful for checking the convergence behavior of the propensity score. It's expected to be close to 0 when convergence is achieved.}
 #'       \item{\code{iter}}{Number of iterations where convergence is achieved for the iterative update of the mediator density and propensity score.}}
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' # E(Y(1)) estimation. For binary outcome Y and binary mediator M.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
@@ -97,7 +97,6 @@
 #' @import np densratio SuperLearner mvtnorm stats
 #' @importFrom dplyr %>% mutate select
 #' @importFrom MASS mvrnorm
-#' @export
 #'
 #'
 TMLE.all <- function(a,data,treatment, mediators, outcome, covariates,

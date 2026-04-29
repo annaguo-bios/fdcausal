@@ -1,5 +1,5 @@
-## TMLE np-dnorm ====
-#' Function for implementing TMLE with the mediator density \eqn{p(M|A,X)} estimated assuming normal distribution.
+## TMLE np ====
+#' Function for implementing TMLE with the mediator density \eqn{p(M|A,X)} estimated with nonparametric kernel density method: https://cran.r-project.org/web/packages/np/index.html.
 #' @param a Treatment level at which the average counterfactual outcome is computed
 #' @param data A Dataframe contains treatment, mediators, outcome, and measured confounders
 #' @param treatment Variable name for the unvariate binary treatment
@@ -8,8 +8,8 @@
 #' @param covariates Variable name for the measured confounders
 #' @param n.iter The maximum number of iterations performed when iteratively updating the mediator density and propensity score.
 #' @param eps A logical indicator determines the stopping criteria used when iteratively updating the mediator density and propensity score. The default is 'eps=T'.
-#' When 'eps=T', \eqn{\sqrt{\epsilon_2^2+\epsilon_3^2}} is used. When 'eps=F', \eqn{max(|\Phi_M|,|\Phi_A|} is used. In general, adoption of 'eps=T' results in better convergence while it takes longer time.
-#' Conversely, adoption of 'eps=F' usually requires less time but can result in algorithm divergence.
+#' When 'eps=T', \eqn{\sqrt{\epsilon_2^2+\epsilon_3^2}} is used. When 'eps=F', \eqn{max(|\Phi_M|,|\Phi_A|} is used. In general, adoption of 'eps=F' results in better convergence while it takes longer time.
+#' Conversely, adoption of 'eps=T' usually requires less time but can result in algorithm divergence.
 #' @param cvg.criteria A numerical value representing the convergence criteria when iteratively updating the mediator density and propensity score. The default value is 0.01, meaning update stops when stopping criteria < 0.01. The stopping criteria is chosen by the eps.
 #' @param formulaY Regression formula for the outcome regression of Y on M, A, X. The default is 'Y ~ 1+ M + A + X'.
 #' @param formulaA Regression formula for the propensity score regression of A on X. The default is 'A ~ 1 + X'.
@@ -34,19 +34,19 @@
 #'       \item{\code{eps3_vec}}{A vector containing the index for submodels of the propensity score over iterations. This is useful for checking the convergence behavior of the propensity score. It's expected to be close to 0 when convergence is achieved.}
 #'       \item{\code{iter}}{Number of iterations where convergence is achieved for the iterative update of the mediator density and propensity score.}}
 #' @examples
-#' \donttest{
-#' res <- TMLE.np.dnorm(1,data=continuousY_continuousM,
+#' \dontrun{
+#' res <- TMLE.np(1,data=continuousY_continuousM,
 #' treatment="A", mediator="M", outcome="Y", covariates="X")
 #' }
 #' @import np
-#' @importFrom MASS mvrnorm
 #' @importFrom dplyr %>% mutate select
-#' @export
+#' @importFrom MASS mvrnorm
 
-TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=c("X1","X2","X3"),
+TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=c("X1","X2","X3"),
                     n.iter=500, eps=T, cvg.criteria=0.01,
                     formulaY="Y ~ .", formulaA="A ~ .", linkA="logit",
-                    truncate_lower=0, truncate_upper=1, estimator='onestep'){
+                    truncate_lower=0, truncate_upper=1,
+                    estimator=c('onestep','tmle')){
 
   # attach(data, warn.conflicts=FALSE)
 
@@ -60,9 +60,8 @@ TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", covar
 
   n <- nrow(data)
 
-  if (length(covariates)==1){ # covariaets is of length 1, rename the covariate to "X"
-    covariaets = "X"
-  }
+  # covariates is of length 1, rename the covariate to "X"
+  if (length(covariates)==1){ covariates = "X" }
 
   ######################
   ## store data for TMLE
@@ -114,19 +113,24 @@ TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", covar
   f.or <- function(M,A,X,eps1=0){predict(or_fit, newdata = data.frame(M=M,A=A,X,row.names = NULL))+eps1}
 
   ## M|A,X
-  # Methods on density estimation: assuming normal distribution for p(M|A,X)
+  # Methods on density estimation:
+  # np: https://cran.r-project.org/web/packages/np/np.pdf
 
-  m.fit <- lm(M~., data=data.frame(A,X))
-  m.coef <- m.fit$coefficients # coefficient of the regression
-  l.coef <- length(m.coef) # length of the coefficient
-  m.sd <- sd(M-predict(m.fit))
+  # Construct the formula using paste0
+  formula_str <- paste0(paste(mediator, collapse = " + "), " ~ ", paste(c(treatment,covariates), collapse = " + "))
 
-  p.M.AX <- dnorm(M,m.coef[1]+m.coef[2]*A+ as.matrix(X) %*% t(m.coef[3:l.coef]),m.sd)
-  p.M.aX <- dnorm(M,m.coef[1]+m.coef[2]*a+ as.matrix(X) %*% t(m.coef[3:l.coef]),m.sd)
+  # Create the formula
+  formula <- as.formula(formula_str)
+
+  bw <- npcdensbw(formula=formula, data=dat_MAX)
+  M_fit <- npcdens(bws=bw)
+
+  # prediction
+  p.M.AX <- predict(M_fit)
+  p.M.aX <- predict(M_fit, newdata=dat_MaX)
 
 
   ## propensity score
-
 
   if (truncate_lower!=0 | truncate_upper!=1){ # under weak overlapping issue, it's more stable to run A~X via linear regression
 
@@ -190,10 +194,13 @@ TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", covar
   }
 
   # updated density function for M|A,X
+
+  ## np
   f.m <- function(M,A,X,cumprod.M,row.indicator){
+    # predict p(M|A,X)
+    newdata <- data.frame(M=M,A=A,X, row.names = NULL); names(newdata) <- c("M","A", covariates) # new data frame for prediction
 
-    pM.AX <- dnorm(M,m.coef[1]+m.coef[2]*A+ as.matrix(X) %*% t(m.coef[3:l.coef]),m.sd)
-
+    pM.AX <- predict(M_fit, newdata=newdata)
     return(pM.AX*cumprod.M(M,X,row.indicator))
   }
 
@@ -443,6 +450,7 @@ TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", covar
     if ('onestep'==estimator){return(list(Onestep=onestep.out))}
     else if ('tmle'==estimator){return(TMLE=tmle.out)}
   }
+
 
 
 }

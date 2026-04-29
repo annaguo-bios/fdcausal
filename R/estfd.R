@@ -9,8 +9,10 @@
 NULL
 
 ## The main function that execute all TMLE estimators ====
-#' Function for average counterfactual outcome E(Y(a)) and average causal effect (ACE) estimation. Most of the arguments are passed directly to TMLE.all.
-#' @param a Treatment level at which the average counterfactual outcome is computed
+#' Function for estimating the average treatment effect (ATE) and the average treatment effect on the treated (ATT).
+#' Also capable of estimating the average counterfactual outcome at a specific treatment level: \eqn{E(Y^a)} and \eqn{E(Y^a|A=1-a)}.
+#' @param a Treatment level at which the average counterfactual outcome is computed. For ATE=\eqn{E(Y^1) - E(Y^0)} and ATT=\eqn{E(Y^1) - E(Y^0)|A=1} estimation, set a=c(1,0).
+#' Otherwise, set a=1 or a=0 to estimate the average counterfactual outcome at the specified treatment level.
 #' @param data A Dataframe contains treatment, mediators, outcome, and measured confounders
 #' @param treatment Variable name for the unvariate binary treatment
 #' @param mediators Variable name for the continuous univariate mediator
@@ -72,21 +74,21 @@ NULL
 #' # ATT estimation. For binary outcome Y and binary mediator M.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=binaryY_binaryM,
+#' res <-estfd(a=c(1,0),data=binaryY_binaryM,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
 #'   linkA="identity",ATT=TRUE)
 #'
 #' # ATE estimation. For binary outcome Y and binary mediator M.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=binaryY_binaryM,
+#' res <-estfd(a=c(1,0),data=binaryY_binaryM,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
 #'   linkA="identity")
 #'
 #' # ATE estimation. For continuous outcome Y and binary mediator M
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=continuousY_binaryM,
+#' res <-estfd(a=c(1,0),data=continuousY_binaryM,
 #' treatment="A", mediators="M", outcome="Y",
 #' covariates="X",  linkA="identity")
 #'
@@ -94,7 +96,7 @@ NULL
 #' # Data is generated under p(A=1|X) = 0.001 + 0.998X. And X~Uniform(0,1).
 #' # Therefore, this dataset suffers from weak overlapping.
 #' # Below we apply truncation to the propensity score to truncate it between (0.001, 0.999).
-#' res <- TMLE(a=c(1,0),data=continuousY_binaryM_weakoverlap,
+#' res <- estfd(a=c(1,0),data=continuousY_binaryM_weakoverlap,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
 #'  linkA="identity", truncate_lower=0.001, truncate_upper=0.999)
 #'
@@ -103,7 +105,7 @@ NULL
 #' # Setting np.dnorm=F, so that mediator density is estimated via the np function.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=continuousY_continuousM,
+#' res <-estfd(a=c(1,0),data=continuousY_continuousM,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
 #'  linkA="identity", mediator.method="np", np.dnorm=FALSE)
 #'
@@ -112,7 +114,7 @@ NULL
 #' # Setting np.dnorm=T, so that mediator density is estimated assuming normal distribution.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=continuousY_continuousM,
+#' res <-estfd(a=c(1,0),data=continuousY_continuousM,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
 #'  linkA="identity", mediator.method="np", np.dnorm=TRUE)
 #'
@@ -121,7 +123,7 @@ NULL
 #' # Data is generated under p(A=1|X) = 0.001 + 0.998X. And X~Uniform(0,1).
 #' # Therefore, this dataset suffers from weak overlapping.
 #' # Below we apply truncation to the propensity score to truncate it between (0.001, 0.999).
-#' res <-TMLE(a=c(1,0),data=continuousY_continuousM_weakoverlap,
+#' res <-estfd(a=c(1,0),data=continuousY_continuousM_weakoverlap,
 #' treatment="A", mediators="M", outcome="Y", covariates="X",
 #'  linkA="identity", mediator.method="densratio",
 #' truncate_lower=0.001, truncate_upper=0.999)
@@ -130,7 +132,7 @@ NULL
 #' # Using 'densratio' method for mediator density ratio estimation.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=continuousY_bivariateM,
+#' res <-estfd(a=c(1,0),data=continuousY_bivariateM,
 #' treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
 #'   linkA="identity", mediator.method="densratio")
 #'
@@ -138,7 +140,7 @@ NULL
 #' # Using 'bayes' method for mediator density ratio estimation.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=continuousY_bivariateM,
+#' res <-estfd(a=c(1,0),data=continuousY_bivariateM,
 #' treatment="A", mediators=c("M.1","M.2"), outcome="Y", covariates="X",
 #'   linkA="identity", mediator.method="bayes")
 #'
@@ -146,7 +148,7 @@ NULL
 #' # Using 'dnorm' method for mediator density ratio estimation.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=continuousY_bivariateM,treatment="A",
+#' res <-estfd(a=c(1,0),data=continuousY_bivariateM,treatment="A",
 #' mediators=c("M.1","M.2"), outcome="Y", covariates="X",
 #'  linkA="identity", mediator.method="dnorm")
 #'
@@ -154,7 +156,7 @@ NULL
 #' # Using 'densratio' method for mediator density ratio estimation.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=continuousY_quadrivariateM,treatment="A",
+#' res <-estfd(a=c(1,0),data=continuousY_quadrivariateM,treatment="A",
 #' mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X",
 #'  linkA="identity", mediator.method="densratio")
 #'
@@ -162,7 +164,7 @@ NULL
 #' # Using 'bayes' method for mediator density ratio estimation.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=continuousY_quadrivariateM,
+#' res <-estfd(a=c(1,0),data=continuousY_quadrivariateM,
 #' treatment="A", mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X",
 #'   linkA="identity", mediator.method="bayes")
 #'
@@ -170,7 +172,7 @@ NULL
 #' # Using 'dnorm' method for mediator density ratio estimation.
 #' # Data is generated under p(A=1|X) = 0.3 + 0.2X.
 #' # Therefore, setting link for propensity score to be "identity".
-#' res <-TMLE(a=c(1,0),data=continuousY_quadrivariateM,
+#' res <-estfd(a=c(1,0),data=continuousY_quadrivariateM,
 #' treatment="A", mediators=c("M.1","M.2","M.3","M.4"), outcome="Y", covariates="X",
 #'   linkA="identity", mediator.method="dnorm")
 #' }
@@ -181,7 +183,7 @@ NULL
 #' @export
 #'
 #'
-TMLE <- function(a,data,treatment, mediators, outcome, covariates,
+estfd <- function(a,data,treatment, mediators, outcome, covariates,
                  mediator.method="bayes", np.dnorm=T, superlearner=F,crossfit=F,K=5,
                  lib = c("SL.glm","SL.earth","SL.ranger","SL.mean"), n.iter=500, eps=T, cvg.criteria=0.01,
                  formulaY="Y ~ .", formulaA="A ~ .", formulaM="M~.", linkY_binary="logit", linkA="logit", linkM_binary="logit",

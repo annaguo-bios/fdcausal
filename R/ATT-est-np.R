@@ -6,6 +6,7 @@
 #' @param mediator Variable name for the continuous univariate mediator
 #' @param outcome Variable name for the continuous univariate outcome
 #' @param covariates Variable name for the measured confounders
+#' @param onestep A logical indicator determines whether one-step estimation is executed. When 'onestep=T', the one-step estimation result is provided. Conversely, if 'onestep=F', the result is withheld.
 #' @param n.iter The maximum number of iterations performed when iteratively updating the mediator density and propensity score.
 #' @param eps A logical indicator determines the stopping criteria used when iteratively updating the mediator density and propensity score. The default is 'eps=T'.
 #' When 'eps=T', \eqn{\sqrt{\epsilon_2^2+\epsilon_3^2}} is used. When 'eps=F', \eqn{max(|\Phi_M|,|\Phi_A|} is used. In general, adoption of 'eps=F' results in better convergence while it takes longer time.
@@ -34,19 +35,17 @@
 #'       \item{\code{eps3_vec}}{A vector containing the index for submodels of the propensity score over iterations. This is useful for checking the convergence behavior of the propensity score. It's expected to be close to 0 when convergence is achieved.}
 #'       \item{\code{iter}}{Number of iterations where convergence is achieved for the iterative update of the mediator density and propensity score.}}
 #' @examples
-#' \donttest{
-#' ATT.TMLE.np.dnorm(1,data=continuousY_continuousM,
+#' \dontrun{
+#' ATT.TMLE.np(1,data=continuousY_continuousM,
 #' treatment="A", mediator="M", outcome="Y", covariates="X")
 #' }
 #' @import np
 #' @importFrom dplyr %>% mutate select
-#' @export
 
-ATT.TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=c("X1","X2","X3"),
-                        n.iter=500, eps=T, cvg.criteria=0.01,
-                        formulaY="Y ~ .", formulaA="A ~ .", linkA="logit",
-                        truncate_lower=0, truncate_upper=1,
-                        estimator='onestep'){
+ATT.TMLE.np <- function(a,data,treatment="A", mediator="M", outcome="Y", covariates=c("X1","X2","X3"),
+                    n.iter=500, eps=T, cvg.criteria=0.01,
+                    formulaY="Y ~ .", formulaA="A ~ .", linkA="logit",
+                    truncate_lower=0, truncate_upper=1, estimator='onestep'){
 
   # attach(data, warn.conflicts=FALSE)
 
@@ -81,16 +80,21 @@ ATT.TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", c
   # updated function for outcome regression
   f.or <- function(M,A,X,eps.Y=0){predict(or_fit, newdata = data.frame(M=M,A=A,X,row.names = NULL))+eps.Y}
 
-  ## M|A,X
-  # Methods on density estimation: assuming normal distribution for p(M|A,X)
+  ## M|A,X ====
+  # Methods on density estimation:
+  # np: https://cran.r-project.org/web/packages/np/np.pdf
 
-  m.fit <- lm(M~., data=data.frame(A,X))
-  m.coef <- m.fit$coefficients # coefficient of the regression
-  l.coef <- length(m.coef) # length of the coefficient
-  m.sd <- sd(M-predict(m.fit))
+  # Construct the formula using paste0
+  formula_str <- paste0(paste(mediator, collapse = " + "), " ~ ", paste(c(treatment,covariates), collapse = " + "))
 
-  p.M.altX <- dnorm(M,m.coef[1]+m.coef[2]*alt+ as.matrix(X) %*% t(m.coef[3:l.coef]),m.sd)
-  p.M.aX <- dnorm(M,m.coef[1]+m.coef[2]*a+ as.matrix(X) %*% t(m.coef[3:l.coef]),m.sd)
+  # Create the formula
+  formula <- as.formula(formula_str)
+  bw <- npcdensbw(formula=formula, data=dat_MAX)
+  M_fit <- npcdens(bws=bw)
+
+  # prediction
+  p.M.aX <- predict(M_fit, newdata=data.frame(M=M, A=a, X)) # p(M|A=a,X)
+  p.M.altX <- predict(M_fit, newdata=data.frame(M=M, A=alt, X)) # p(M|A=a',X)
 
 
   ## propensity score ====
@@ -124,7 +128,9 @@ ATT.TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", c
   f.m <- function(M,A,X, eps.M=0, clever_coef.M=0){
 
     # predict p(M|A,X)
-    p.M.AX <- dnorm(M, m.coef[1]+m.coef[2]*A+ as.matrix(X) %*% t(m.coef[3:l.coef]),m.sd)
+    newdata <- data.frame(M=M,A=A,X, row.names = NULL); names(newdata) <- c("M","A", covariates) # new data frame for prediction
+
+    p.M.AX <- predict(M_fit, newdata=newdata) # original p(M|A,X)
 
     p.M.AX <- p.M.AX*{1+eps.M*clever_coef.M} # post-target p(M|A,X)
 
@@ -273,6 +279,7 @@ ATT.TMLE.np.dnorm <- function(a,data,treatment="A", mediator="M", outcome="Y", c
                      EDstar=c(EDstar_or,EDstar_M) # EIF
     ) # number of iterations for M|A,X and A|X to converge
   }
+
 
   if(length(estimator)==2){
     return(list(TMLE=tmle.out,Onestep=onestep.out))
