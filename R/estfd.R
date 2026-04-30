@@ -8,67 +8,88 @@
 ## usethis namespace: end
 NULL
 
-## The main function that execute all TMLE estimators ====
-#' Function for estimating the average treatment effect (ATE) and the average treatment effect on the treated (ATT).
-#' Also capable of estimating the average counterfactual outcome at a specific treatment level: \eqn{E(Y^a)} and \eqn{E(Y^a|A=1-a)}.
-#' @param a Treatment level at which the average counterfactual outcome is computed. For ATE=\eqn{E(Y^1) - E(Y^0)} and ATT=\eqn{E(Y^1) - E(Y^0)|A=1} estimation, set a=c(1,0).
-#' Otherwise, set a=1 or a=0 to estimate the average counterfactual outcome at the specified treatment level.
-#' @param data A Dataframe contains treatment, mediators, outcome, and measured confounders
-#' @param treatment Variable name for the unvariate binary treatment
-#' @param mediators Variable name for the continuous univariate mediator
-#' @param outcome Variable name for the continuous univariate outcome
-#' @param covariates Variable name for the measured confounders
-#' @param onestep A logical indicator determines whether one-step estimation is executed. When 'onestep=T', the one-step estimation result is provided. Conversely, if 'onestep=F', the result is withheld.
-#' @param mediator.method When M is univariate binary, regression is adopted for estimating \eqn{p(M|A,X)}. Otherwise, four methods for mediator density estimation is provided, namely "bayes", "densratio", "dnorm", and "np".
-#' The "bayes" method estimates the density ratio \eqn{p(M|A,X)/p(M|a,X)} by rewriting it as \eqn{(p(a|M,X)/p(A|M,X))/(p(a|X)/p(A|X))}, where p(A|M,X) is then estimated via regression. TMLE estimators using 'bayes' method avoids updating the mediator density p(M|A,X).
-#' The "densratio" method estimates \eqn{p(M|A,X)/p(M|a,X)} by rewriting it as \eqn{(p(M,a,X)/p(M,A,X))/(p(a|X)/p(A|X))}, where \eqn{p(M,A,X)/p(M,a,X)} is estimated with the \link[densratio]{densratio} function,
-#' and \eqn{p(a|X)/p(A|X)} is estimated via regression. "densratio" method is only applicable if all mediators are numeric or integer valued. TMLE estimators using 'densratio' method avoids updating the mediator density p(M|A,X).
-#' The "dnorm" method estimates the mediator density ratio \eqn{p(M|A,X)/p(M|a,X)} assuming p(M|A,X) follows a normal distribution. TMLE estimators using 'dnorm' method avoids updating the mediator density p(M|A,X).
-#' TMLE estimators using 'np' method directly update the mediator density p(M|A,X). When np.dnorm=F, the "np" method estimates \eqn{p(M|a,X)/p(M|A,X)} by estimating \eqn{p(M|A,X)} with the \link[np]{npcdens} function.
-#' When np.dnorm=T, the "np" method estimates \eqn{p(M|a,X)/p(M|A,X)} assuming normal distribution. Due to the computational burden, "np" method is only available for univariate continuous mediator.
-#' @param superlearner A logical indicator determines whether SuperLearner via the \link[SuperLearner]{SuperLearner} function is adopted for estimating the outcome regression, mediator density, and the propensity score.
-#' SuperLearner is the preferred option in cases where complex relationships among variables exist, potentially leading to model misspecification issues when using simple linear models.
-#' @param crossfit A logical indicator determines whether SuperLearner+Cross-fitting is adopted for estimating the outcome regression, mediator density, and the propensity score.
-#' @param K A integer indicating the number of folds for cross-fitting, the default is 5.
-#' @param lib Library of algorithms for SuperLearner.
-#' @param n.iter The maximum number of iterations performed when iteratively updating the mediator density and propensity score.
-#' @param eps A logical indicator determines the stopping criteria used when iteratively updating the mediator density and propensity score. The default is 'eps=T'.
-#' When 'eps=T', \eqn{\sqrt{\epsilon_2^2+\epsilon_3^2}} is used, where \eqn{\epsilon_2} and \eqn{\epsilon_3} are the index of the sub-models for mediator density and propensity score. When 'eps=F', \eqn{max(|\Phi_M|,|\Phi_A|)} is used,
-#' where \eqn{\Phi_M} and \eqn{\Phi_A} are the mapping of efficient influcence function (EIF) into the tangent space of \eqn{M|A,X} and \eqn{A|X}. In general, adoption of 'eps=F' results in better convergence while it takes longer time.
-#' Conversely, adoption of 'eps=T' usually requires less time but can result in algorithm divergence.
-#' @param cvg.criteria A numerical value representing the convergence criteria when iteratively updating the mediator density and propensity score.
-#'  The default value is 0.01, meaning update stops when stopping criteria < 0.01. The stopping criteria is chosen by the eps.
-#' @param formulaY Regression formula for the outcome regression of Y on M, A, X. The default is 'Y ~ 1+ M + A + X'.
-#' @param linkY_binary The link function used for the logistic regression of Y on M, A, X when Y is binary. The default is the 'logit' link.
-#' @param formulaA Regression formula for the propensity score regression of A on X. The default is 'A ~ 1 + X'.
-#' @param linkA The link function used for the logistic regression of A on X. The default is the 'logit' link.
-#' @param formulaM Regression formula for the mediator density regression of M on A and X. The default is 'M ~ 1 + A + X'. This parameter is only needed when M is a univariate binary mediator.
-#' @param linkM_binary The link function used for the logistic regression of M on A and X. The default is the 'logit' link. This parameter is only needed when M is a univariate binary mediator.
-#' @param formula_bayes Regression formula for the regression of A on M and X. The default is 'A ~ 1 + M + X'. This parameter is only needed when mediator.method="bayes".
-#' @param link_bayes The link function used for the logistic regression of A on M and X. The default is 'logit' link. This parameter is only needed when mediator.method="bayes".
-#' @param truncate_lower A numeric variable, setting lower bound for the truncated propensity score. The default is 0.01.
-#' @param truncate_upper A numeric variable, setting upper bound for the truncated propensity score. The default is 0.99.
-#' @param np.dnorm A logic variable. If np.dnorm=T, p(M|A,X) is directly estimated assuming normal distribution. If np.dnorm=F, p(M|A,X) is directly estimated using the \link[np]{npcdens} function.
-#' @param ATT A logic variable. If ATT=T, the function estimates the Average Treatment Effect on the Treated (ATT). If ATT=F, the function estimates the Average Treatment Effect (ATE). ATT=F by default.
-#' @param estimator A character string indicating which estimator is to be used. The options are "onestep" and "tmle".
-#' @param boundedsubmodelY An indicator for whether the bounded submodel is used for targeting the outcome regression when Z is discrete. The default is FALSE.
-#' @return Function outputs a list containing TMLE results (and Onestep results if 'onestep=T' is specified). When 'a=c(1,0)', function also outputs corresponding results on \eqn{E(Y^1)} and \eqn{E(Y^1)}:
-#' \describe{
-#'       \item{\code{ATE}}{The estimated Average Causal Effect: \eqn{E(Y^1)-E(Y^0)}}
-#'       \item{\code{estimated_psi}}{The estimated parameter of interest: \eqn{E(Y^a)}}
-#'       \item{\code{lower.ci}}{Lower bound of the 95\% confidence interval for \code{ATE} or \code{estimated_psi}}
-#'       \item{\code{upper.ci}}{Upper bound of the 95\% confidence interval for \code{ATE} or \code{estimated_psi}}
-#'       \item{\code{theta_x}}{\eqn{\int E(Y|M,A,X)p(M|A=a,X)p(A|X) dM dA}}
-#'       \item{\code{p.m1.aX}}{\eqn{\int p(M=1|A=a,X)}}
-#'       \item{\code{p.a1.X}}{\eqn{p(A=1|X)}}
-#'       \item{\code{or_pred}}{\eqn{E(Y|M,A,X)}}
-#'       \item{\code{EIF}}{The estimated efficient influence function evaluated at the observed data}
-#'       \item{\code{EDstar}}{A vector of the mapping of \code{EIF} in the tangent space of \eqn{Y|M,A,X}; \eqn{M|A,X}; and \eqn{A|X}.}
-#'       \item{\code{EDstar_M.vec}}{A vector containing the average value of the mapping of EIF in tangent space \eqn{M|A,X} over iterations. This is useful for checking the convergence behavior of the mediator density. It's expected to be close to 0 when convergence is achieved.}
-#'       \item{\code{EDstar_ps.vec}}{A vector containing the average value of the mapping of EIF in tangent space \eqn{A|X} over iterations. This is useful for checking the convergence behavior of the propensity score. It's expected to be close to 0 when convergence is achieved.}
-#'       \item{\code{eps2_vec}}{A vector containing the index for submodels of the mediator density over iterations. This is useful for checking the convergence behavior of the mediator density. It's expected to be close to 0 when convergence is achieved.}
-#'       \item{\code{eps3_vec}}{A vector containing the index for submodels of the propensity score over iterations. This is useful for checking the convergence behavior of the propensity score. It's expected to be close to 0 when convergence is achieved.}
-#'       \item{\code{iter}}{Number of iterations where convergence is achieved for the iterative update of the mediator density and propensity score.}}
+#' Estimate ATE and ATT via TMLE and/or one-step estimation.
+#'
+#' Estimates the ATE \eqn{E(Y^1) - E(Y^0)}, ATT \eqn{E(Y^1) - E(Y^0|A=1)},
+#' or marginal counterfactual means \eqn{E(Y^a)}, \eqn{E(Y^a|A=1-a)} under the front-door model.
+#'
+#' @param a Treatment level(s). Use \code{c(1,0)} for ATE/ATT; use \code{1} or
+#'   \code{0} for a single counterfactual mean.
+#' @param data Data frame containing treatment, mediator(s), outcome, and covariates.
+#' @param treatment Name of the binary treatment variable.
+#' @param mediators Name of the mediator variable. Can be a single variable or a vector of variable names for multiple mediators.
+#' @param outcome Name of the univariate outcome variable.
+#' @param covariates Names of the measured confounders.
+#' @param estimator Which estimator to use: \code{"onestep"} or \code{"tmle"}.
+#' @param ATT Logical. If \code{TRUE}, estimate the ATT; otherwise estimate the ATE. Default \code{FALSE}.
+#'
+#' @param mediator.method Method for mediator density estimation (ignored when M is binary,
+#'   in which case regression is used automatically):
+#'   \describe{
+#'     \item{\code{"bayes"}}{Estimates the density ratio via Bayes' rule:
+#'       \eqn{p(M|A,X)/p(M|a,X) = [p(a|M,X)/p(A|M,X)] / [p(a|X)/p(A|X)]}.
+#'       Avoids directly updating \eqn{p(M|A,X)} in constructing TMLE.}
+#'     \item{\code{"densratio"}}{Estimates the density ratio using \code{\link[densratio]{densratio}}.
+#'       Requires all mediators to be numeric. Avoids directly updating \eqn{p(M|A,X)} in constructing TMLE.}
+#'     \item{\code{"dnorm"}}{Assumes \eqn{p(M|A,X)} is normal to estimate the density ratio.
+#'       Avoids directly updating \eqn{p(M|A,X)} in constructing TMLE.}
+#'     \item{\code{"np"}}{Directly updates \eqn{p(M|A,X)}. Uses \code{\link[np]{npcdens}}
+#'       when \code{np.dnorm=FALSE}, or a normal approximation when \code{np.dnorm=TRUE}.
+#'       Only available for univariate continuous M due to computational cost. Requires updating \eqn{p(M|A,X)}
+#'       at each iteration of TMLE, which can be computationally intensive.}
+#'   }
+#' @param np.dnorm Logical. Only relevant when \code{mediator.method = "np"}.
+#'   If \code{TRUE}, estimate \eqn{p(M|A,X)} assuming normality; if \code{FALSE},
+#'   use \code{\link[np]{npcdens}}. Default \code{FALSE}.
+#'
+#' @param superlearner Logical. If \code{TRUE}, use SuperLearner
+#'   (\code{\link[SuperLearner]{SuperLearner}}) for all nuisance estimates
+#'   (outcome regression, mediator density, propensity score). Recommended when
+#'   relationships among variables are complex.
+#' @param crossfit Logical. If \code{TRUE}, combine SuperLearner with cross-fitting.
+#' @param K Number of folds for cross-fitting. Default \code{5}.
+#' @param lib Learner library passed to SuperLearner.
+#'
+#' @param n.iter Maximum number of iterations for the iterative update of the
+#'   mediator density and propensity score.
+#' @param eps Logical. Stopping criterion for TMLE iterative updates. If \code{TRUE}
+#'   (default), stop when \eqn{\sqrt{\epsilon_2^2 + \epsilon_3^2}} is small;
+#'   if \code{FALSE}, stop when \eqn{\max(|\Phi_M|, |\Phi_A|)} is small.
+#'   \code{FALSE} gives better convergence but is slower.
+#' @param cvg.criteria Convergence threshold for iterative updates. Default \code{0.01}.
+#'
+#' @param formulaY Outcome regression formula (\eqn{Y \sim M + A + X}). Default \code{Y ~ 1 + M + A + X}.
+#' @param linkY_binary Link function for binary Y. Default \code{"logit"}.
+#' @param formulaA Propensity score formula (\eqn{A \sim X}). Default \code{A ~ 1 + X}.
+#' @param linkA Link function for the propensity score. Default \code{"logit"}.
+#' @param formulaM Mediator regression formula; only used when M is binary. Default \code{M ~ 1 + A + X}.
+#' @param linkM_binary Link function for binary M. Default \code{"logit"}.
+#' @param formula_bayes Regression formula for \eqn{A \sim M + X}; only used when
+#'   \code{mediator.method = "bayes"}. Default \code{A ~ 1 + M + X}.
+#' @param link_bayes Link function for the Bayes regression of A on M, X. Default \code{"logit"}.
+#' @param truncate_lower Lower truncation bound for the propensity score. Default \code{0.01}.
+#' @param truncate_upper Upper truncation bound for the propensity score. Default \code{0.99}.
+#' @param boundedsubmodelY Logical. Whether to use a bounded submodel when targeting
+#'   the outcome regression for discrete Z. Default \code{FALSE}.
+#'
+#' @return A list with components:
+#'   \describe{
+#'     \item{\code{ATE}}{Estimated ATE: \eqn{E(Y^1) - E(Y^0)}.}
+#'     \item{\code{estimated_psi}}{Estimated \eqn{E(Y^a)}.}
+#'     \item{\code{lower.ci}, \code{upper.ci}}{95\% confidence interval bounds.}
+#'     \item{\code{theta_x}}{\eqn{\int E(Y|M,A,X)\,p(M|A=a,X)\,p(A|X)\,dM\,dA}.}
+#'     \item{\code{p.m1.aX}}{\eqn{p(M=1|A=a,X)} (binary M only).}
+#'     \item{\code{p.a1.X}}{Estimated propensity score \eqn{p(A=1|X)}.}
+#'     \item{\code{or_pred}}{Fitted outcome regression \eqn{E(Y|M,A,X)}.}
+#'     \item{\code{EIF}}{Efficient influence function evaluated at observed data.}
+#'     \item{\code{EDstar}}{EIF projections onto the tangent spaces of \eqn{Y|M,A,X},
+#'       \eqn{M|A,X}, and \eqn{A|X}.}
+#'     \item{\code{EDstar_M.vec}, \code{EDstar_ps.vec}}{Per-iteration mean EIF projections
+#'       for \eqn{M|A,X} and \eqn{A|X}; should approach 0 at convergence.}
+#'     \item{\code{eps2_vec}, \code{eps3_vec}}{Per-iteration submodel indices for
+#'       \eqn{M|A,X} and \eqn{A|X}; should approach 0 at convergence.}
+#'     \item{\code{iter}}{Number of iterations until convergence.}
+#'   }
 #' @examples
 #' \donttest{
 #' # ATT estimation. For binary outcome Y and binary mediator M.
